@@ -6,6 +6,7 @@ export type ResourceKey =
   | "power"
   | "minerals"
   | "alloys"
+  | "rare_earths"
   | "research";
 
 export type Resources = Record<ResourceKey, number>;
@@ -22,7 +23,13 @@ export type BuildingId =
   | "spaceport"
   | "storage_tank"
   | "atmospheric_processor"
-  | "barracks";
+  | "barracks"
+  | "battery"
+  | "geothermal_plant"
+  | "fusion_reactor"
+  | "mega_habitat"
+  | "vat_farm"
+  | "orbital_dock";
 
 export type TerrainId = "plain" | "ice" | "ore" | "ridge";
 
@@ -89,7 +96,21 @@ export type ResearchId =
   | "standing_army"
   | "security_apparatus"
   | "free_press"
-  | "independence_movement";
+  | "independence_movement"
+  | "battery_storage"
+  | "geothermal_power"
+  | "fusion_power"
+  | "modular_construction"
+  | "deep_drilling"
+  | "megastructures"
+  | "medical_doctrine"
+  | "vat_protein"
+  | "longevity"
+  | "computing"
+  | "cybernetics"
+  | "quantum_computing"
+  | "infantry_doctrine"
+  | "combined_arms";
 
 export interface ResearchDef {
   id: ResearchId;

@@ -1,4 +1,4 @@
-export const SAVE_VERSION = 7;
+export const SAVE_VERSION = 8;
 export const SAVE_KEY = "starborn.save.v1";
 
 export const MAP_RADIUS = 4;
@@ -9,9 +9,10 @@ export const STARTING_RESOURCES = {
   food: 400,
   water: 400,
   oxygen: 400,
-  power: 0,
+  power: 30,
   minerals: 200,
   alloys: 0,
+  rare_earths: 0,
   research: 0,
 } as const;
 
@@ -20,9 +21,10 @@ export const BASE_STORAGE_CAPS = {
   food: 500,
   water: 500,
   oxygen: 500,
-  power: 0,
+  power: 50,
   minerals: 400,
   alloys: 200,
+  rare_earths: 200,
   research: Infinity,
 } as const;
 

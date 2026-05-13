@@ -5,12 +5,13 @@ import type { ResourceKey } from "@/game/types";
 
 const ORDER: { key: ResourceKey; label: string; icon: string; flow?: boolean }[] = [
   { key: "credits", label: "Credits", icon: "₡" },
-  { key: "power", label: "Power", icon: "⚡", flow: true },
+  { key: "power", label: "Power", icon: "⚡" },
   { key: "food", label: "Food", icon: "⚘" },
   { key: "water", label: "Water", icon: "☃" },
   { key: "oxygen", label: "Oxygen", icon: "♁" },
   { key: "minerals", label: "Minerals", icon: "⛏" },
   { key: "alloys", label: "Alloys", icon: "⚒" },
+  { key: "rare_earths", label: "Rare Earths", icon: "✦" },
   { key: "research", label: "Research", icon: "⚗" },
 ];
 
