@@ -158,7 +158,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     output: {},
     workers: 0,
     constructionSols: 2,
-    storage: { food: 250, water: 250, oxygen: 250, minerals: 300, alloys: 80 },
+    storage: { food: 250, water: 250, oxygen: 250, minerals: 300, alloys: 80, rare_earths: 60 },
     upgrades: standardUpgrades(80, 6),
   },
   barracks: {
@@ -287,7 +287,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     constructionSols: 10,
     maintenance: { alloys: 0.5, minerals: 2 },
     upgrades: standardUpgrades(1500, 60),
-    atmospherePerSol: 0.04,
+    atmospherePerSol: 0.08,
     requiresResearch: "atmospherics",
   },
 };

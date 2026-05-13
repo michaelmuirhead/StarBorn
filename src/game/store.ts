@@ -385,7 +385,7 @@ export function buildingLiveStats(
     if (def.id === "mine" && completed.has("deep_drilling")) {
       const bonusMult = outputMult * gov.productionMult * laws.productionMult * cyberMult;
       prod.credits = (prod.credits ?? 0) + 1 * bonusMult;
-      prod.rare_earths = (prod.rare_earths ?? 0) + 0.3 * bonusMult;
+      prod.rare_earths = (prod.rare_earths ?? 0) + 0.5 * bonusMult;
     }
 
     for (const k in def.upkeep) {
