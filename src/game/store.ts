@@ -9,6 +9,7 @@ import { nextOfferAfter, rollOffer } from "./trade";
 import { applyTraitLawMods, generateGovernor, governorEffects } from "./governor";
 import { startingFactions, normaliseInfluence } from "./factions";
 import { LAW_CATEGORY_ORDER, LAW_COOLDOWN_SOLS, LAWS, defaultLaws, findOption } from "./laws";
+import { CHOICE_EVENT_DEFS, findChoiceEvent } from "./choice_events";
 import {
   ATMOSPHERE_VICTORY,
   BASE_STORAGE_CAPS,
@@ -61,6 +62,7 @@ interface Actions {
   acceptOffer: () => void;
   declineOffer: () => void;
   changeLaw: (category: LawCategoryId, optionId: string) => void;
+  applyChoice: (choiceId: string) => void;
 }
 
 export type GameStore = GameState & Actions;
@@ -105,6 +107,9 @@ function freshState(): GameState {
     loyalty: STARTING_LOYALTY,
     factions: startingFactions(),
     laws: defaultLaws(),
+    pendingChoice: null,
+    firedChoiceEvents: {},
+    independence: false,
     log: [
       {
         sol: 1,
@@ -393,6 +398,7 @@ interface Production {
   workersNeeded: number;
   storageCaps: Resources;
   atmosphereGain: number;
+  soldierCapacity: number;
   perBuilding: Map<string, BuildingLiveStats>;
 }
 
@@ -403,6 +409,7 @@ function computeProduction(state: GameState): Production {
   let housing = 0;
   let workersNeeded = 0;
   let atmosphereGain = 0;
+  let soldierCapacity = 0;
 
   const neighborsByTile = neighborsByTileMap(state.tiles);
   const buildingByTile = new Map<number, PlacedBuilding>(
@@ -426,6 +433,10 @@ function computeProduction(state: GameState): Production {
         }
       }
     }
+    if (isOperational(b, state.sol) && def.soldierCapacity) {
+      const { outputMult } = levelMultipliers(b);
+      soldierCapacity += def.soldierCapacity * outputMult;
+    }
     if (!isOperational(b, state.sol)) continue;
     if (def.workers > 0 && b.workers < def.workers) continue;
 
@@ -441,7 +452,16 @@ function computeProduction(state: GameState): Production {
     atmosphereGain += stats.atmospherePerSol;
   }
 
-  return { prod, upkeep, housing, workersNeeded, storageCaps, atmosphereGain, perBuilding };
+  return {
+    prod,
+    upkeep,
+    housing,
+    workersNeeded,
+    storageCaps,
+    atmosphereGain,
+    soldierCapacity,
+    perBuilding,
+  };
 }
 
 function assignWorkers(state: GameState): PlacedBuilding[] {
@@ -653,7 +673,7 @@ function runTick(state: GameState): GameState {
 
   const buildings = assignWorkers({ ...state, sol, events, strata });
   const production = computeProduction({ ...state, sol, events, buildings, strata });
-  const { prod, upkeep, housing, storageCaps, atmosphereGain } = production;
+  const { prod, upkeep, housing, storageCaps, atmosphereGain, soldierCapacity } = production;
 
   // Power balance — if consumption exceeds production, scale most outputs down.
   const powerProd = prod.power;
@@ -749,7 +769,17 @@ function runTick(state: GameState): GameState {
     const moraleGain = completed.has("civic_council") ? 2 : 1;
     morale = Math.min(100, morale + moraleGain);
   }
-  morale = Math.min(100, Math.max(0, morale + moraleAdj + laws.moraleDelta));
+  // Barracks overcrowding: soldiers without enough barracks capacity drag morale.
+  let barracksMorale = 0;
+  if (strata.soldiers > 0) {
+    const overflow = Math.max(0, strata.soldiers - soldierCapacity);
+    if (overflow > 0) barracksMorale -= Math.min(5, overflow);
+    else if (soldierCapacity > 0) barracksMorale += 0.3;
+  }
+  morale = Math.min(
+    100,
+    Math.max(0, morale + moraleAdj + laws.moraleDelta + barracksMorale)
+  );
 
   // Specialist training: every operational lab gives a chance per sol to
   // promote one worker into a specialist, capped at a target ratio.
@@ -850,6 +880,37 @@ function runTick(state: GameState): GameState {
   });
   factions = normaliseInfluence(factions);
 
+  // Roll a branching choice event, if none pending and conditions hit.
+  let pendingChoice = state.pendingChoice;
+  const firedChoiceEvents = { ...state.firedChoiceEvents };
+  if (!pendingChoice) {
+    const probeState: GameState = {
+      ...state,
+      sol,
+      strata,
+      morale,
+      loyalty,
+      factions,
+      resources,
+      government: state.government,
+    };
+    for (const def of CHOICE_EVENT_DEFS) {
+      const lastFired = firedChoiceEvents[def.id];
+      if (lastFired !== undefined) {
+        if (!def.cooldownSols) continue;
+        if (sol - lastFired < def.cooldownSols) continue;
+      }
+      if (!def.trigger(probeState)) continue;
+      pendingChoice = { defId: def.id, offeredSol: sol };
+      log = pushLog(log, {
+        sol,
+        kind: "warn",
+        message: `Decision: ${def.name}`,
+      });
+      break;
+    }
+  }
+
   if (popAfter === 0 && totalPopulation(state.strata) > 0) {
     log = pushLog(log, {
       sol,
@@ -874,6 +935,8 @@ function runTick(state: GameState): GameState {
     nextOfferSol,
     loyalty,
     factions,
+    pendingChoice,
+    firedChoiceEvents,
     research,
     log,
   });
@@ -1115,6 +1178,62 @@ export const useGame = create<GameStore>((set, get) => ({
     };
     set(after);
     schedulePersist(after);
+  },
+
+  applyChoice: (choiceId) => {
+    const state = get();
+    if (!state.pendingChoice) return;
+    const def = findChoiceEvent(state.pendingChoice.defId);
+    if (!def) return;
+    const choice = def.choices.find((c) => c.id === choiceId);
+    if (!choice) return;
+    const e = choice.effect;
+
+    let resources = { ...state.resources };
+    if (e.resources) {
+      for (const k in e.resources) {
+        const key = k as keyof Resources;
+        resources[key] = (resources[key] ?? 0) + (e.resources[key] ?? 0);
+      }
+    }
+
+    let morale = state.morale + (e.morale ?? 0);
+    morale = Math.max(0, Math.min(100, morale));
+    let loyalty = state.loyalty + (e.loyalty ?? 0);
+    loyalty = Math.max(0, Math.min(100, loyalty));
+
+    let factions = state.factions.map((f) => {
+      const dh = e.factionHappiness?.[f.id] ?? 0;
+      const di = e.factionInfluence?.[f.id] ?? 0;
+      return {
+        ...f,
+        happiness: Math.max(0, Math.min(100, f.happiness + dh)),
+        influence: Math.max(0, f.influence + di),
+      };
+    });
+    factions = normaliseInfluence(factions);
+
+    const government = e.setGovernment ?? state.government;
+    const independence = e.setIndependence ? true : state.independence;
+
+    const next: GameState = {
+      ...state,
+      resources,
+      morale,
+      loyalty,
+      factions,
+      government,
+      independence,
+      pendingChoice: null,
+      firedChoiceEvents: { ...state.firedChoiceEvents, [def.id]: state.sol },
+      log: pushLog(state.log, {
+        sol: state.sol,
+        kind: e.logKind ?? "info",
+        message: e.logMessage ?? `${def.name}: ${choice.label}`,
+      }),
+    };
+    set(next);
+    schedulePersist(next);
   },
 
   changeLaw: (category, optionId) => {

@@ -58,15 +58,22 @@ which all scale identically from 12 colonists to billions.
       (Standing Army, Security Apparatus, Free Press, Independence
       Movement) and government type. Governor traits modify how
       factions react. 10-sol cooldown per category.
-- [ ] **Loyalty to Earth** — top-level stat, drifts with policy.
-      Thresholds trigger Earth sanctions, then the option to declare
-      independence, then a (Phase 3+) war.
-- [ ] **Branching events** — events present 2–4 choices that swing
-      faction influence, loyalty, resources, or fire follow-up chains.
-- [ ] **New win/loss conditions** — Independence Declared (Phase 3+
-      hook), Earth Annexation (loyalty bottoms out), Civil War (faction
-      stalemate + low morale). Existing terraforming + colony collapse
-      remain.
+- [x] **Loyalty to Earth** — top-level stat, drifts with policy.
+      Thresholds gate the political choice events that drive the
+      government type transitions.
+- [x] **Branching events** — five choice events at launch:
+      Provisional Council Proposed, Declare the Martian Republic,
+      Strike at the Foundries, AI Council Proposal, Earth Tariff
+      Renegotiation. Each presents 2–3 options that swing resources,
+      morale, loyalty, faction happiness/influence, and (for the
+      government ones) the government type or independence flag.
+- [x] **Government type transitions** via choice events:
+      Corporate Colony → Provisional Council → Martian Republic.
+      Each transition unlocks further law options.
+- [ ] **Win/loss conditions** — Independence Declared flag is now
+      set (Phase 3+ hook). Still TODO: Earth Annexation (loyalty
+      bottoms out → loss), Civil War (faction stalemate + low morale
+      → loss). Existing terraforming + colony collapse remain.
 - [ ] **Tutorial overlay** for the first few sols.
 - [ ] **Subtle ambient audio**.
 
@@ -80,7 +87,14 @@ which all scale identically from 12 colonists to billions.
 
 ## Phase 4 — Military and conflict [L]
 
-- [ ] Armies (ground forces) and Navies (space fleets)
+- [x] **Army foundation** — Soldier stratum is now meaningful: a new
+      Barracks building (gated by Standing Army research) provides
+      soldier capacity. Soldiers without enough barracks drag morale;
+      adequately housed soldiers contribute small morale upkeep.
+      Conscription law converts workers into soldiers per sol with a
+      worker-floor that protects staffed buildings.
+- [ ] Armies (ground forces) and Navies (space fleets) with actual
+      doctrines, units, and operations
 - [ ] Recruitment, upkeep, doctrine
 - [ ] Earth-Mars War scenario: independence struggle
 - [ ] Civil wars triggered by morale / faction systems

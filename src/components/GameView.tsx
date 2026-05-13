@@ -11,7 +11,14 @@ import TradeOffer from "./TradeOffer";
 import GovernorCard from "./GovernorCard";
 import FactionsPanel from "./FactionsPanel";
 import LawsPanel from "./LawsPanel";
-import { hydrateFromStorage, isStormSeason, solInYear, useGame } from "@/game/store";
+import ChoicePrompt from "./ChoicePrompt";
+import {
+  hydrateFromStorage,
+  isStormSeason,
+  snapshotProduction,
+  solInYear,
+  useGame,
+} from "@/game/store";
 import { ATMOSPHERE_VICTORY, SOL_MS, YEAR_SOLS } from "@/game/constants";
 
 export default function GameView() {
@@ -63,6 +70,7 @@ export default function GameView() {
           <BuildMenu />
         </div>
         <div className="flex flex-col gap-3 min-h-0">
+          <ChoicePrompt />
           <MarsMap />
           <FlavorBar />
           <TradeOffer />
@@ -85,8 +93,18 @@ function FlavorBar() {
   const sol = useGame((s) => s.sol);
   const buildings = useGame((s) => s.buildings.length);
   const research = useGame((s) => s.research.completed.length);
+  const soldiers = useGame((s) => s.strata.soldiers);
+  const independence = useGame((s) => s.independence);
+  const state = useGame();
+  const soldierCapacity = snapshotProduction(state).soldierCapacity;
   const stormy = isStormSeason(sol);
   const yearSol = solInYear(sol);
+  const milTone =
+    soldiers > soldierCapacity && soldiers > 0
+      ? "text-rose-300"
+      : soldiers > 0
+        ? "text-mars-100"
+        : "text-space-200";
   return (
     <div className="panel px-3 py-2 text-[11px] flex flex-wrap gap-x-4 gap-y-1 text-space-200">
       <span>
@@ -101,6 +119,18 @@ function FlavorBar() {
       <span>
         Techs <span className="text-mars-100 font-mono">{research}</span>
       </span>
+      <span
+        title="Soldiers / total barracks capacity. Overflow drags morale."
+      >
+        Military <span className={`font-mono ${milTone}`}>
+          {Math.floor(soldiers)}/{Math.floor(soldierCapacity)}
+        </span>
+      </span>
+      {independence && (
+        <span className="text-emerald-300" title="Mars has declared independence. Phase 3 hook.">
+          ✪ Independent
+        </span>
+      )}
       <span
         className={`ml-auto ${stormy ? "text-amber-300" : "text-space-200"}`}
         title="Martian storm season clusters dust storms in the second half of each year."
