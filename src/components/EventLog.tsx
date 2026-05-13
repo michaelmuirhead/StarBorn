@@ -8,10 +8,10 @@ export default function EventLog() {
   const sol = useGame((s) => s.sol);
 
   return (
-    <section className="panel p-3 flex flex-col gap-2">
-      <h2 className="text-sm uppercase tracking-widest text-mars-200">Sitrep</h2>
+    <section className="panel p-3 flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
+      <h2 className="text-sm uppercase tracking-widest text-mars-200 shrink-0">Sitrep</h2>
       {events.length > 0 && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1 shrink-0">
           {events.map((e) => {
             const remaining = e.durationSols - (sol - e.startedSol);
             return (
@@ -27,7 +27,7 @@ export default function EventLog() {
           })}
         </div>
       )}
-      <div className="scrollarea overflow-y-auto max-h-[32vh] flex flex-col gap-1 text-[12px]">
+      <div className="scrollarea overflow-y-auto flex-1 min-h-0 flex flex-col gap-1 text-[12px]">
         {log.map((entry, i) => {
           const color =
             entry.kind === "good"

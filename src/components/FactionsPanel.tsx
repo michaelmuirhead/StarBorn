@@ -11,9 +11,9 @@ export default function FactionsPanel() {
   ).filter((f): f is NonNullable<typeof f> => !!f);
 
   return (
-    <section className="panel p-3 flex flex-col gap-2">
-      <h2 className="text-sm uppercase tracking-widest text-mars-200">Factions</h2>
-      <div className="flex flex-col gap-2">
+    <section className="panel p-3 flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
+      <h2 className="text-sm uppercase tracking-widest text-mars-200 shrink-0">Factions</h2>
+      <div className="flex flex-col gap-2 overflow-y-auto scrollarea flex-1 min-h-0 pr-1">
         {ordered.map((f) => {
           const def = FACTIONS[f.id];
           const happinessTone =

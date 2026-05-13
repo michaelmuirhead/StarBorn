@@ -11,7 +11,7 @@ export default function GovernorCard() {
   const gov = GOVERNMENTS[government];
 
   return (
-    <section className="panel p-3 flex flex-col gap-2">
+    <section className="panel p-3 flex flex-col gap-2 shrink-0">
       <div>
         <div className="text-[10px] uppercase tracking-widest text-space-200">
           {gov.name}

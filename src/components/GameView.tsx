@@ -5,13 +5,11 @@ import TopBar from "./TopBar";
 import ResourcePanel from "./ResourcePanel";
 import MarsMap from "./MarsMap";
 import BuildMenu from "./BuildMenu";
-import ResearchPanel from "./ResearchPanel";
-import EventLog from "./EventLog";
 import TradeOffer from "./TradeOffer";
 import GovernorCard from "./GovernorCard";
-import FactionsPanel from "./FactionsPanel";
-import LawsPanel from "./LawsPanel";
 import ChoicePrompt from "./ChoicePrompt";
+import RightTabs from "./RightTabs";
+import Onboarding from "./Onboarding";
 import {
   dateLabel,
   hydrateFromStorage,
@@ -25,6 +23,7 @@ import { ATMOSPHERE_VICTORY, SOL_MS, YEAR_SOLS } from "@/game/constants";
 export default function GameView() {
   const [hydrated, setHydrated] = useState(false);
   const speed = useGame((s) => s.speed);
+  const onboarded = useGame((s) => s.onboarded);
   const tick = useGame((s) => s.tick);
   const lastTickRef = useRef<number>(0);
 
@@ -34,7 +33,7 @@ export default function GameView() {
   }, []);
 
   useEffect(() => {
-    if (!hydrated || speed === 0) return;
+    if (!hydrated || !onboarded || speed === 0) return;
     const interval = SOL_MS / speed;
     let raf = 0;
     const loop = (now: number) => {
@@ -47,45 +46,40 @@ export default function GameView() {
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [hydrated, speed, tick]);
+  }, [hydrated, onboarded, speed, tick]);
 
   if (!hydrated) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-mars-200 text-sm tracking-widest uppercase">
+      <main className="h-screen flex items-center justify-center text-mars-200 text-sm tracking-widest uppercase">
         Booting colony systems…
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen flex flex-col">
+    <main className="h-screen flex flex-col overflow-hidden">
+      {!onboarded && <Onboarding />}
       <TopBar />
-      <div className="mx-3 mt-3 flex flex-col gap-2">
+      <div className="mx-3 mt-2 flex flex-col gap-2">
         <ResourcePanel />
         <AtmosphereBar />
         <VictoryBanner />
       </div>
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_320px] gap-3 m-3">
-        <div className="flex flex-col gap-3 min-h-0">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_320px] gap-2 m-3 mt-2">
+        <div className="flex flex-col gap-2 min-h-0 overflow-hidden">
           <GovernorCard />
           <BuildMenu />
         </div>
-        <div className="flex flex-col gap-3 min-h-0">
+        <div className="flex flex-col gap-2 min-h-0 overflow-hidden">
           <ChoicePrompt />
           <MarsMap />
           <FlavorBar />
           <TradeOffer />
-          <LawsPanel />
         </div>
-        <div className="flex flex-col gap-3 min-h-0">
-          <FactionsPanel />
-          <ResearchPanel />
-          <EventLog />
+        <div className="flex flex-col gap-2 min-h-0 overflow-hidden">
+          <RightTabs />
         </div>
       </div>
-      <footer className="text-[10px] text-space-200 text-center pb-3">
-        StarBorn · single-player MVP · save lives in your browser
-      </footer>
     </main>
   );
 }
@@ -108,7 +102,7 @@ function FlavorBar() {
         ? "text-mars-100"
         : "text-space-200";
   return (
-    <div className="panel px-3 py-2 text-[11px] flex flex-wrap gap-x-4 gap-y-1 text-space-200">
+    <div className="panel px-3 py-1.5 text-[11px] flex flex-wrap gap-x-4 gap-y-1 text-space-200 shrink-0">
       <span>
         Date <span className="text-mars-100 font-mono">{date}</span>
       </span>
@@ -124,15 +118,14 @@ function FlavorBar() {
       <span>
         Techs <span className="text-mars-100 font-mono">{research}</span>
       </span>
-      <span
-        title="Soldiers / total barracks capacity. Overflow drags morale."
-      >
-        Military <span className={`font-mono ${milTone}`}>
+      <span title="Soldiers / total barracks capacity. Overflow drags morale.">
+        Military{" "}
+        <span className={`font-mono ${milTone}`}>
           {Math.floor(soldiers)}/{Math.floor(soldierCapacity)}
         </span>
       </span>
       {independence && (
-        <span className="text-emerald-300" title="Mars has declared independence. Phase 3 hook.">
+        <span className="text-emerald-300" title="Mars has declared independence.">
           ✪ Independent
         </span>
       )}
@@ -151,21 +144,18 @@ function AtmosphereBar() {
   const pct = Math.min(100, (atmosphere / ATMOSPHERE_VICTORY) * 100);
   if (atmosphere === 0) return null;
   return (
-    <div className="panel px-3 py-2">
+    <div className="panel px-3 py-1.5">
       <div className="flex items-center justify-between text-[11px]">
         <span className="uppercase tracking-widest text-mars-200">Terraforming</span>
         <span className="font-mono text-space-50">
           {atmosphere.toFixed(1)} / {ATMOSPHERE_VICTORY}
         </span>
       </div>
-      <div className="mt-1 h-2 rounded bg-space-700 overflow-hidden">
+      <div className="mt-1 h-1.5 rounded bg-space-700 overflow-hidden">
         <div
           className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-300"
           style={{ width: `${pct}%` }}
         />
-      </div>
-      <div className="text-[10px] text-space-200 mt-1">
-        As atmosphere rises, colonists need less bottled oxygen.
       </div>
     </div>
   );
@@ -175,11 +165,10 @@ function VictoryBanner() {
   const victory = useGame((s) => s.victory);
   if (!victory) return null;
   return (
-    <div className="panel px-3 py-2 border-emerald-500/40 bg-emerald-900/20 text-emerald-100">
+    <div className="panel px-3 py-1.5 border-emerald-500/40 bg-emerald-900/20 text-emerald-100">
       <div className="text-sm uppercase tracking-widest">🌱 Mars terraformed</div>
       <div className="text-[12px] text-emerald-200 mt-0.5">
-        The atmosphere holds. Earth-Mars relations and off-world expansion arrive
-        in Phase 3.
+        The atmosphere holds. Off-world expansion arrives in Phase 3.
       </div>
     </div>
   );

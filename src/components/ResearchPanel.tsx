@@ -11,8 +11,8 @@ export default function ResearchPanel() {
   const pct = current ? Math.min(100, (research.progress / current.cost) * 100) : 0;
 
   return (
-    <section className="panel p-3 flex flex-col gap-2">
-      <h2 className="text-sm uppercase tracking-widest text-mars-200">Research</h2>
+    <section className="panel p-3 flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
+      <h2 className="text-sm uppercase tracking-widest text-mars-200 shrink-0">Research</h2>
       {current ? (
         <div>
           <div className="flex items-center justify-between text-xs">
@@ -31,7 +31,7 @@ export default function ResearchPanel() {
       ) : (
         <div className="text-[11px] text-space-200">No active project. Pick one below.</div>
       )}
-      <div className="grid grid-cols-1 gap-1.5 scrollarea overflow-y-auto max-h-[36vh] pr-1">
+      <div className="grid grid-cols-1 gap-1.5 scrollarea overflow-y-auto flex-1 min-h-0 pr-1">
         {RESEARCH_ORDER.map((id) => {
           const def = RESEARCH[id];
           const done = research.completed.includes(id);
