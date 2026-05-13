@@ -1,4 +1,4 @@
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const SAVE_KEY = "starborn.save.v1";
 
 export const MAP_RADIUS = 4;
@@ -26,9 +26,19 @@ export const BASE_STORAGE_CAPS = {
   research: Infinity,
 } as const;
 
-export const STARTING_POPULATION = 12;
+export const STARTING_STRATA = {
+  workers: 8,
+  specialists: 4,
+  soldiers: 0,
+} as const;
+
 export const STARTING_HOUSING = 12;
 export const STARTING_MORALE = 70;
+
+export const STARTING_LOYALTY = 80;
+export const LOYALTY_DRIFT_PER_SOL = -0.05;
+export const SPECIALIST_TARGET_RATIO = 0.35;
+export const SPECIALIST_TRAINING_CHANCE_PER_LAB = 0.025;
 
 export const POP_GROWTH_PER_SOL = 0.04;
 export const POP_DECAY_PER_SOL = 0.06;

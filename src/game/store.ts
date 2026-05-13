@@ -6,6 +6,8 @@ import { RESEARCH } from "./research";
 import { EVENT_DEFS } from "./events";
 import { generateTiles, tileNeighbors } from "./map";
 import { nextOfferAfter, rollOffer } from "./trade";
+import { generateGovernor, governorEffects } from "./governor";
+import { startingFactions, normaliseInfluence } from "./factions";
 import {
   ATMOSPHERE_VICTORY,
   BASE_STORAGE_CAPS,
@@ -16,8 +18,12 @@ import {
   SAVE_VERSION,
   STARTING_HOUSING,
   STARTING_MORALE,
-  STARTING_POPULATION,
+  STARTING_STRATA,
   STARTING_RESOURCES,
+  STARTING_LOYALTY,
+  LOYALTY_DRIFT_PER_SOL,
+  SPECIALIST_TARGET_RATIO,
+  SPECIALIST_TRAINING_CHANCE_PER_LAB,
   STORM_SEASON_END,
   STORM_SEASON_START,
   YEAR_SOLS,
@@ -26,11 +32,14 @@ import {
 import type {
   ActiveEvent,
   BuildingId,
+  FactionState,
   GameState,
   LogEntry,
   PlacedBuilding,
   ResearchId,
   Resources,
+  Strata,
+  Stratum,
   Tile,
   TradeOffer,
 } from "./types";
@@ -64,15 +73,20 @@ const EMPTY_RESOURCES: Resources = {
   research: 0,
 };
 
+export function totalPopulation(strata: Strata): number {
+  return strata.workers + strata.specialists + strata.soldiers;
+}
+
 function freshState(): GameState {
   const tiles = generateTiles(42);
+  const governor = generateGovernor(1);
   return {
     version: SAVE_VERSION,
     sol: 1,
     speed: 1,
     resources: { ...STARTING_RESOURCES },
     storageCaps: { ...BASE_STORAGE_CAPS },
-    population: STARTING_POPULATION,
+    strata: { ...STARTING_STRATA },
     morale: STARTING_MORALE,
     housing: STARTING_HOUSING,
     atmosphere: 0,
@@ -83,12 +97,15 @@ function freshState(): GameState {
     events: [],
     pendingOffer: null,
     nextOfferSol: FIRST_OFFER_SOL,
+    governor,
+    government: "corporate_colony",
+    loyalty: STARTING_LOYALTY,
+    factions: startingFactions(),
     log: [
       {
         sol: 1,
         kind: "info",
-        message:
-          "Colony ship Aresward touches down. 12 colonists step onto Mars. Build solar, water, food, oxygen — quickly.",
+        message: `Colony ship Aresward touches down. Director ${governor.name} steps onto Mars with 12 colonists. Build solar, water, food, oxygen — quickly.`,
       },
     ],
     selectedTile: null,
@@ -205,8 +222,12 @@ export function upgradeCostFor(b: PlacedBuilding): Partial<Resources> | null {
   return nextTier ? nextTier.cost : null;
 }
 
-function rollNewEvent(sol: number, active: ActiveEvent[]): ActiveEvent | null {
-  const baseChance = isStormSeason(sol) ? 0.3 : 0.18;
+function rollNewEvent(
+  sol: number,
+  active: ActiveEvent[],
+  eventChanceMult: number
+): ActiveEvent | null {
+  const baseChance = (isStormSeason(sol) ? 0.3 : 0.18) * eventChanceMult;
   if (Math.random() > baseChance) return null;
   const stormBoost = isStormSeason(sol) ? 4 : 1;
   const eligible = EVENT_DEFS.filter(
@@ -268,6 +289,7 @@ export function buildingLiveStats(
   const solarMult = modifierFor(state.events, "solarMultiplier");
   const foodMult = modifierFor(state.events, "foodMultiplier");
   const researchEventMult = modifierFor(state.events, "researchMultiplier");
+  const gov = governorEffects(state.governor.traits);
 
   const neighbors =
     precomputed?.neighborsByTile.get(placed.tile) ?? tileNeighbors(state.tiles, tile);
@@ -315,8 +337,13 @@ export function buildingLiveStats(
         const bonus = Math.min(a.max ?? Infinity, pairNeighbors * a.perNeighbor);
         amount += bonus;
       }
-      amount *= outputMult;
+      amount *= outputMult * gov.productionMult;
+      if (key === "research") amount *= gov.researchMult;
       prod[key] = (prod[key] ?? 0) + amount;
+    }
+
+    if (def.id === "habitat" && gov.habitatCreditTrickle > 0) {
+      prod.credits = (prod.credits ?? 0) + gov.habitatCreditTrickle;
     }
 
     for (const k in def.upkeep) {
@@ -325,7 +352,8 @@ export function buildingLiveStats(
     }
     for (const k in def.maintenance ?? {}) {
       const key = k as keyof Resources;
-      upkeep[key] = (upkeep[key] ?? 0) + (def.maintenance![key] ?? 0) * upkeepMult;
+      upkeep[key] =
+        (upkeep[key] ?? 0) + (def.maintenance![key] ?? 0) * upkeepMult * gov.maintenanceMult;
     }
   }
 
@@ -411,12 +439,14 @@ function computeProduction(state: GameState): Production {
 }
 
 function assignWorkers(state: GameState): PlacedBuilding[] {
-  let available = state.population;
+  const available: Strata = { ...state.strata };
   return state.buildings.map((b) => {
     const def = BUILDINGS[b.building];
     if (def.workers === 0 || !isOperational(b, state.sol)) return { ...b, workers: 0 };
-    const assigned = Math.min(def.workers, available);
-    available -= assigned;
+    const stratum: Stratum = def.staffStratum ?? "workers";
+    const pool = Math.floor(available[stratum]);
+    const assigned = Math.min(def.workers, pool);
+    available[stratum] -= assigned;
     return { ...b, workers: assigned };
   });
 }
@@ -451,15 +481,30 @@ function applyOperational(state: GameState): GameState {
   return { ...state, log };
 }
 
+function decayStrata(strata: Strata, loss: number): Strata {
+  if (loss <= 0) return strata;
+  const next: Strata = { ...strata };
+  let remaining = loss;
+  const order: Stratum[] = ["workers", "specialists", "soldiers"];
+  for (const s of order) {
+    if (remaining <= 0) break;
+    const take = Math.min(next[s], remaining);
+    next[s] -= take;
+    remaining -= take;
+  }
+  return next;
+}
+
 function runTick(state: GameState): GameState {
   const sol = state.sol + 1;
+  const gov = governorEffects(state.governor.traits);
 
   // Expire active events.
   let events = state.events.filter((e) => sol - e.startedSol < e.durationSols);
   let log = state.log;
 
-  // Roll a new event (storm-season-weighted).
-  const newEvent = rollNewEvent(sol, events);
+  // Roll a new event (storm-season-weighted, governor-modified).
+  const newEvent = rollNewEvent(sol, events, gov.eventChanceMult);
   if (newEvent) {
     events = [...events, newEvent];
     const def = EVENT_DEFS.find((d) => d.id === newEvent.defId);
@@ -476,9 +521,11 @@ function runTick(state: GameState): GameState {
   }
 
   let resources = { ...state.resources };
-  let population = state.population;
+  let strata: Strata = { ...state.strata };
   let morale = state.morale;
   let atmosphere = state.atmosphere;
+  let loyalty = state.loyalty;
+  let factions = state.factions.map((f) => ({ ...f }));
 
   for (const ev of events) {
     if (ev.startedSol !== sol) continue;
@@ -491,12 +538,18 @@ function runTick(state: GameState): GameState {
         resources[key] = (resources[key] ?? 0) + (imm.resources[key] ?? 0);
       }
     }
-    if (imm.population) population = Math.max(0, population + imm.population);
+    if (imm.population) {
+      if (imm.population > 0) {
+        strata = { ...strata, workers: strata.workers + imm.population };
+      } else {
+        strata = decayStrata(strata, -imm.population);
+      }
+    }
     if (imm.morale) morale = Math.max(0, Math.min(100, morale + imm.morale));
   }
 
-  const buildings = assignWorkers({ ...state, sol, events });
-  const production = computeProduction({ ...state, sol, events, buildings });
+  const buildings = assignWorkers({ ...state, sol, events, strata });
+  const production = computeProduction({ ...state, sol, events, buildings, strata });
   const { prod, upkeep, housing, storageCaps, atmosphereGain } = production;
 
   // Power balance — if consumption exceeds production, scale most outputs down.
@@ -510,6 +563,7 @@ function runTick(state: GameState): GameState {
   const completed = new Set(state.research.completed);
   const xeno = completed.has("xeno_biology") ? 0.8 : 1;
   const atmosScale = 1 - atmosphere / ATMOSPHERE_VICTORY;
+  const population = totalPopulation(strata);
   const foodNeed = population * PER_COLONIST.food * xeno;
   const waterNeed = population * PER_COLONIST.water * xeno;
   const oxygenNeed = population * PER_COLONIST.oxygen * atmosScale;
@@ -523,12 +577,7 @@ function runTick(state: GameState): GameState {
   resources.credits += prod.credits;
   resources.power = powerProd - powerUse;
 
-  // Adjacency morale (habitat clustering).
   let moraleAdj = 0;
-  for (const stats of production.perBuilding.values()) {
-    // Morale from habitat clustering: 1 per adjacent habitat, capped per building at 3, total cap 5.
-    // Implemented inline below to avoid building->def lookup here.
-  }
   for (const b of state.buildings) {
     const def = BUILDINGS[b.building];
     if (!def.adjacency?.moralePerSameNeighbor) continue;
@@ -538,6 +587,7 @@ function runTick(state: GameState): GameState {
     moraleAdj += Math.min(3, stats.sameNeighbors * def.adjacency.moralePerSameNeighbor);
   }
   moraleAdj = Math.min(5, moraleAdj);
+  moraleAdj += gov.moraleBonus;
 
   // Clamp resources to storage caps (lose overflow with a quiet log entry).
   const clamped = clampToCaps(resources, storageCaps);
@@ -566,9 +616,11 @@ function runTick(state: GameState): GameState {
   if (resources.minerals < 0) resources.minerals = 0;
   if (resources.alloys < 0) resources.alloys = 0;
 
+  let popAfter = population;
   if (shortages.length > 0) {
     const loss = Math.max(1, Math.floor(population * POP_DECAY_PER_SOL));
-    population = Math.max(0, population - loss);
+    strata = decayStrata(strata, loss);
+    popAfter = totalPopulation(strata);
     morale = Math.max(0, morale - 5);
     log = pushLog(log, {
       sol,
@@ -577,24 +629,43 @@ function runTick(state: GameState): GameState {
     });
   } else if (population < housing && morale > 40) {
     const growth = population * POP_GROWTH_PER_SOL;
-    const gained = Math.random() < growth ? 1 : 0;
-    if (gained > 0) {
-      population += gained;
+    if (Math.random() < growth) {
+      strata = { ...strata, workers: strata.workers + 1 };
+      popAfter = totalPopulation(strata);
       log = pushLog(log, {
         sol,
         kind: "good",
-        message: `A new colonist joined. Population now ${population}.`,
+        message: `A new colonist joined. Population now ${popAfter}.`,
       });
     }
   }
 
-  if (population > housing) {
+  if (popAfter > housing) {
     morale = Math.max(0, morale - 2);
   } else if (resources.food > 50 && resources.water > 50) {
     const moraleGain = completed.has("civic_council") ? 2 : 1;
     morale = Math.min(100, morale + moraleGain);
   }
   morale = Math.min(100, Math.max(0, morale + moraleAdj));
+
+  // Specialist training: every operational lab gives a chance per sol to
+  // promote one worker into a specialist, capped at a target ratio.
+  const operationalLabs = state.buildings.filter(
+    (b) => b.building === "lab" && isOperational(b, sol)
+  ).length;
+  if (operationalLabs > 0 && strata.workers > 0 && popAfter > 0) {
+    const ratio = strata.specialists / popAfter;
+    if (ratio < SPECIALIST_TARGET_RATIO) {
+      const chance = operationalLabs * SPECIALIST_TRAINING_CHANCE_PER_LAB;
+      if (Math.random() < chance) {
+        strata = {
+          ...strata,
+          workers: strata.workers - 1,
+          specialists: strata.specialists + 1,
+        };
+      }
+    }
+  }
 
   // Research progress.
   let research = state.research;
@@ -648,7 +719,31 @@ function runTick(state: GameState): GameState {
     });
   }
 
-  if (population === 0 && state.population > 0) {
+  // Loyalty drift: baseline + governor-modified. Floors at 0, caps at 100.
+  loyalty = Math.max(
+    0,
+    Math.min(100, loyalty + LOYALTY_DRIFT_PER_SOL + gov.loyaltyDriftBonus)
+  );
+
+  // Faction drift: happiness tracks colony conditions; influence drifts very
+  // slowly toward 33/33/33 to avoid a static political map.
+  factions = factions.map((f) => {
+    let happiness = f.happiness;
+    if (shortages.length > 0) happiness -= 1;
+    if (morale > 70) happiness += 0.4;
+    if (morale < 30) happiness -= 0.6;
+    if (f.id === "labour" && popAfter > housing) happiness -= 1;
+    if (f.id === "engineers" && operationalLabs > 0) happiness += 0.2;
+    if (f.id === "loyalists" && loyalty < 40) happiness -= 0.5;
+    return {
+      ...f,
+      happiness: Math.max(0, Math.min(100, happiness)),
+      influence: f.influence + (33.3 - f.influence) * 0.005,
+    };
+  });
+  factions = normaliseInfluence(factions);
+
+  if (popAfter === 0 && totalPopulation(state.strata) > 0) {
     log = pushLog(log, {
       sol,
       kind: "bad",
@@ -661,7 +756,7 @@ function runTick(state: GameState): GameState {
     sol,
     resources,
     storageCaps,
-    population,
+    strata,
     morale,
     housing,
     atmosphere,
@@ -670,6 +765,8 @@ function runTick(state: GameState): GameState {
     events,
     pendingOffer,
     nextOfferSol,
+    loyalty,
+    factions,
     research,
     log,
   });
@@ -723,13 +820,15 @@ export const useGame = create<GameStore>((set, get) => ({
       });
       return;
     }
+    const gov = governorEffects(state.governor.traits);
+    const buildSols = Math.max(1, def.constructionSols - gov.constructionSpeedup);
     const placed: PlacedBuilding = {
       id: `b-${state.sol}-${tile}-${Math.floor(Math.random() * 9999)}`,
       building: id,
       tile,
       workers: 0,
       builtSol: state.sol,
-      constructionDoneSol: state.sol + def.constructionSols,
+      constructionDoneSol: state.sol + buildSols,
       level: 1,
     };
     const next: GameState = {
@@ -739,7 +838,7 @@ export const useGame = create<GameStore>((set, get) => ({
       log: pushLog(state.log, {
         sol: state.sol,
         kind: "info",
-        message: `Construction started: ${def.name} (${def.constructionSols} sols).`,
+        message: `Construction started: ${def.name} (${buildSols} sols).`,
       }),
       selectedTile: tile,
     };
@@ -930,11 +1029,11 @@ export function depletionWarning(
   const completed = new Set(state.research.completed);
   const xeno = completed.has("xeno_biology") ? 0.8 : 1;
   const atmosScale = 1 - state.atmosphere / ATMOSPHERE_VICTORY;
+  const population = totalPopulation(state.strata);
   const needs: Partial<Record<keyof Resources, number>> = {
-    food: state.population * PER_COLONIST.food * xeno - prod.food,
-    water:
-      state.population * PER_COLONIST.water * xeno + (upkeep.water ?? 0) - prod.water,
-    oxygen: state.population * PER_COLONIST.oxygen * atmosScale - prod.oxygen,
+    food: population * PER_COLONIST.food * xeno - prod.food,
+    water: population * PER_COLONIST.water * xeno + (upkeep.water ?? 0) - prod.water,
+    oxygen: population * PER_COLONIST.oxygen * atmosScale - prod.oxygen,
   };
   const out: Array<{ key: keyof Resources; solsLeft: number }> = [];
   for (const k in needs) {

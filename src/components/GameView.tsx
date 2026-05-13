@@ -8,6 +8,8 @@ import BuildMenu from "./BuildMenu";
 import ResearchPanel from "./ResearchPanel";
 import EventLog from "./EventLog";
 import TradeOffer from "./TradeOffer";
+import GovernorCard from "./GovernorCard";
+import FactionsPanel from "./FactionsPanel";
 import { hydrateFromStorage, isStormSeason, solInYear, useGame } from "@/game/store";
 import { ATMOSPHERE_VICTORY, SOL_MS, YEAR_SOLS } from "@/game/constants";
 
@@ -56,6 +58,7 @@ export default function GameView() {
       </div>
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)_320px] gap-3 m-3">
         <div className="flex flex-col gap-3 min-h-0">
+          <GovernorCard />
           <BuildMenu />
         </div>
         <div className="flex flex-col gap-3 min-h-0">
@@ -64,6 +67,7 @@ export default function GameView() {
           <TradeOffer />
         </div>
         <div className="flex flex-col gap-3 min-h-0">
+          <FactionsPanel />
           <ResearchPanel />
           <EventLog />
         </div>
