@@ -6,8 +6,9 @@ import { RESEARCH } from "./research";
 import { EVENT_DEFS } from "./events";
 import { generateTiles, tileNeighbors } from "./map";
 import { nextOfferAfter, rollOffer } from "./trade";
-import { generateGovernor, governorEffects } from "./governor";
+import { applyTraitLawMods, generateGovernor, governorEffects } from "./governor";
 import { startingFactions, normaliseInfluence } from "./factions";
+import { LAW_CATEGORY_ORDER, LAW_COOLDOWN_SOLS, LAWS, defaultLaws, findOption } from "./laws";
 import {
   ATMOSPHERE_VICTORY,
   BASE_STORAGE_CAPS,
@@ -32,8 +33,9 @@ import {
 import type {
   ActiveEvent,
   BuildingId,
-  FactionState,
+  FactionId,
   GameState,
+  LawCategoryId,
   LogEntry,
   PlacedBuilding,
   ResearchId,
@@ -58,6 +60,7 @@ interface Actions {
   exportJson: () => string;
   acceptOffer: () => void;
   declineOffer: () => void;
+  changeLaw: (category: LawCategoryId, optionId: string) => void;
 }
 
 export type GameStore = GameState & Actions;
@@ -101,6 +104,7 @@ function freshState(): GameState {
     government: "corporate_colony",
     loyalty: STARTING_LOYALTY,
     factions: startingFactions(),
+    laws: defaultLaws(),
     log: [
       {
         sol: 1,
@@ -290,6 +294,7 @@ export function buildingLiveStats(
   const foodMult = modifierFor(state.events, "foodMultiplier");
   const researchEventMult = modifierFor(state.events, "researchMultiplier");
   const gov = governorEffects(state.governor.traits);
+  const laws = aggregateLawEffects(state);
 
   const neighbors =
     precomputed?.neighborsByTile.get(placed.tile) ?? tileNeighbors(state.tiles, tile);
@@ -337,8 +342,8 @@ export function buildingLiveStats(
         const bonus = Math.min(a.max ?? Infinity, pairNeighbors * a.perNeighbor);
         amount += bonus;
       }
-      amount *= outputMult * gov.productionMult;
-      if (key === "research") amount *= gov.researchMult;
+      amount *= outputMult * gov.productionMult * laws.productionMult;
+      if (key === "research") amount *= gov.researchMult * laws.researchMult;
       prod[key] = (prod[key] ?? 0) + amount;
     }
 
@@ -353,7 +358,8 @@ export function buildingLiveStats(
     for (const k in def.maintenance ?? {}) {
       const key = k as keyof Resources;
       upkeep[key] =
-        (upkeep[key] ?? 0) + (def.maintenance![key] ?? 0) * upkeepMult * gov.maintenanceMult;
+        (upkeep[key] ?? 0) +
+        (def.maintenance![key] ?? 0) * upkeepMult * gov.maintenanceMult * laws.maintenanceMult;
     }
   }
 
@@ -481,6 +487,81 @@ function applyOperational(state: GameState): GameState {
   return { ...state, log };
 }
 
+export interface AggregatedLawEffects {
+  creditsPerPop: number;
+  conscriptionRate: number;
+  moraleDelta: number;
+  populationGrowthMult: number;
+  researchMult: number;
+  productionMult: number;
+  maintenanceMult: number;
+  loyaltyDrift: number;
+  earthSupplyMult: number;
+  factionDelta: Record<FactionId, number>;
+}
+
+export function aggregateLawEffects(state: GameState): AggregatedLawEffects {
+  const out: AggregatedLawEffects = {
+    creditsPerPop: 0,
+    conscriptionRate: 0,
+    moraleDelta: 0,
+    populationGrowthMult: 1,
+    researchMult: 1,
+    productionMult: 1,
+    maintenanceMult: 1,
+    loyaltyDrift: 0,
+    earthSupplyMult: 1,
+    factionDelta: { loyalists: 0, labour: 0, engineers: 0 },
+  };
+  for (const cat of LAW_CATEGORY_ORDER) {
+    const optionId = state.laws.options[cat];
+    const option = findOption(cat, optionId);
+    if (!option) continue;
+    const e = option.effects;
+    out.creditsPerPop += e.creditsPerPop ?? 0;
+    out.conscriptionRate += e.conscriptionRate ?? 0;
+    out.moraleDelta += e.moraleDelta ?? 0;
+    out.loyaltyDrift += e.loyaltyDrift ?? 0;
+    out.populationGrowthMult *= e.populationGrowthMult ?? 1;
+    out.researchMult *= e.researchMult ?? 1;
+    out.productionMult *= e.productionMult ?? 1;
+    out.maintenanceMult *= e.maintenanceMult ?? 1;
+    out.earthSupplyMult *= e.earthSupplyMult ?? 1;
+
+    const reaction = applyTraitLawMods(
+      state.governor.traits,
+      option.id,
+      option.factionReaction
+    );
+    out.factionDelta.loyalists += reaction.loyalists ?? 0;
+    out.factionDelta.labour += reaction.labour ?? 0;
+    out.factionDelta.engineers += reaction.engineers ?? 0;
+  }
+  return out;
+}
+
+export function isLawOptionAvailable(
+  state: GameState,
+  category: LawCategoryId,
+  optionId: string
+): { ok: boolean; reason?: string } {
+  const option = findOption(category, optionId);
+  if (!option) return { ok: false, reason: "Unknown option." };
+  if (
+    option.requiresResearch &&
+    !state.research.completed.includes(option.requiresResearch)
+  ) {
+    return { ok: false, reason: `Requires ${option.requiresResearch.replace(/_/g, " ")}.` };
+  }
+  if (
+    option.requiresGovernment &&
+    !option.requiresGovernment.includes(state.government)
+  ) {
+    return { ok: false, reason: "Requires government reform." };
+  }
+  return { ok: true };
+}
+
 function decayStrata(strata: Strata, loss: number): Strata {
   if (loss <= 0) return strata;
   const next: Strata = { ...strata };
@@ -498,6 +579,7 @@ function decayStrata(strata: Strata, loss: number): Strata {
 function runTick(state: GameState): GameState {
   const sol = state.sol + 1;
   const gov = governorEffects(state.governor.traits);
+  const laws = aggregateLawEffects(state);
 
   // Expire active events.
   let events = state.events.filter((e) => sol - e.startedSol < e.durationSols);
@@ -548,6 +630,27 @@ function runTick(state: GameState): GameState {
     if (imm.morale) morale = Math.max(0, Math.min(100, morale + imm.morale));
   }
 
+  // Conscription: convert workers into soldiers at the law's rate, leaving at
+  // least one worker per occupied job so the colony doesn't conscript itself
+  // into a shutdown.
+  if (laws.conscriptionRate > 0 && strata.workers > 0) {
+    const draft = strata.workers * laws.conscriptionRate;
+    const floor = state.buildings.reduce((sum, b) => {
+      const def = BUILDINGS[b.building];
+      if ((def.staffStratum ?? "workers") !== "workers") return sum;
+      return sum + def.workers;
+    }, 0);
+    const available = Math.max(0, strata.workers - floor);
+    const moved = Math.min(available, draft);
+    if (moved > 0) {
+      strata = {
+        ...strata,
+        workers: strata.workers - moved,
+        soldiers: strata.soldiers + moved,
+      };
+    }
+  }
+
   const buildings = assignWorkers({ ...state, sol, events, strata });
   const production = computeProduction({ ...state, sol, events, buildings, strata });
   const { prod, upkeep, housing, storageCaps, atmosphereGain } = production;
@@ -574,7 +677,7 @@ function runTick(state: GameState): GameState {
   resources.minerals += prod.minerals * powerScale - upkeep.minerals;
   resources.alloys += prod.alloys * powerScale - (upkeep.alloys ?? 0);
   resources.research += prod.research * powerScale;
-  resources.credits += prod.credits;
+  resources.credits += prod.credits + laws.creditsPerPop * totalPopulation(strata);
   resources.power = powerProd - powerUse;
 
   let moraleAdj = 0;
@@ -628,7 +731,7 @@ function runTick(state: GameState): GameState {
       message: `Shortage of ${shortages.join(", ")}. Lost ${loss} colonist${loss === 1 ? "" : "s"}.`,
     });
   } else if (population < housing && morale > 40) {
-    const growth = population * POP_GROWTH_PER_SOL;
+    const growth = population * POP_GROWTH_PER_SOL * laws.populationGrowthMult;
     if (Math.random() < growth) {
       strata = { ...strata, workers: strata.workers + 1 };
       popAfter = totalPopulation(strata);
@@ -646,7 +749,7 @@ function runTick(state: GameState): GameState {
     const moraleGain = completed.has("civic_council") ? 2 : 1;
     morale = Math.min(100, morale + moraleGain);
   }
-  morale = Math.min(100, Math.max(0, morale + moraleAdj));
+  morale = Math.min(100, Math.max(0, morale + moraleAdj + laws.moraleDelta));
 
   // Specialist training: every operational lab gives a chance per sol to
   // promote one worker into a specialist, capped at a target ratio.
@@ -719,10 +822,13 @@ function runTick(state: GameState): GameState {
     });
   }
 
-  // Loyalty drift: baseline + governor-modified. Floors at 0, caps at 100.
+  // Loyalty drift: baseline + governor + active laws.
   loyalty = Math.max(
     0,
-    Math.min(100, loyalty + LOYALTY_DRIFT_PER_SOL + gov.loyaltyDriftBonus)
+    Math.min(
+      100,
+      loyalty + LOYALTY_DRIFT_PER_SOL + gov.loyaltyDriftBonus + laws.loyaltyDrift
+    )
   );
 
   // Faction drift: happiness tracks colony conditions; influence drifts very
@@ -735,6 +841,7 @@ function runTick(state: GameState): GameState {
     if (f.id === "labour" && popAfter > housing) happiness -= 1;
     if (f.id === "engineers" && operationalLabs > 0) happiness += 0.2;
     if (f.id === "loyalists" && loyalty < 40) happiness -= 0.5;
+    happiness += laws.factionDelta[f.id] ?? 0;
     return {
       ...f,
       happiness: Math.max(0, Math.min(100, happiness)),
@@ -1008,6 +1115,52 @@ export const useGame = create<GameStore>((set, get) => ({
     };
     set(after);
     schedulePersist(after);
+  },
+
+  changeLaw: (category, optionId) => {
+    const state = get();
+    if (state.laws.options[category] === optionId) return;
+    const cooldownUntil = state.laws.cooldownUntilSol[category] ?? 0;
+    if (state.sol < cooldownUntil) {
+      set({
+        log: pushLog(state.log, {
+          sol: state.sol,
+          kind: "warn",
+          message: `${LAWS[category].name} can't be changed for another ${cooldownUntil - state.sol} sols.`,
+        }),
+      });
+      return;
+    }
+    const check = isLawOptionAvailable(state, category, optionId);
+    if (!check.ok) {
+      set({
+        log: pushLog(state.log, {
+          sol: state.sol,
+          kind: "warn",
+          message: `Cannot enact: ${check.reason ?? "unavailable."}`,
+        }),
+      });
+      return;
+    }
+    const option = findOption(category, optionId);
+    if (!option) return;
+    const next: GameState = {
+      ...state,
+      laws: {
+        options: { ...state.laws.options, [category]: optionId },
+        cooldownUntilSol: {
+          ...state.laws.cooldownUntilSol,
+          [category]: state.sol + LAW_COOLDOWN_SOLS,
+        },
+      },
+      log: pushLog(state.log, {
+        sol: state.sol,
+        kind: "info",
+        message: `${LAWS[category].name}: ${option.name} enacted.`,
+      }),
+    };
+    set(next);
+    schedulePersist(next);
   },
 }));
 

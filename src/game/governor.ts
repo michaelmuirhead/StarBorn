@@ -1,4 +1,6 @@
-import type { Governor, TraitDef, TraitId } from "./types";
+import type { FactionId, Governor, TraitDef, TraitId } from "./types";
+
+const FACTION_IDS: FactionId[] = ["loyalists", "labour", "engineers"];
 
 const FIRST_NAMES = [
   "Aris",
@@ -131,6 +133,89 @@ export interface GovernorEffects {
   eventChanceMult: number;
   constructionSpeedup: number;
   habitatCreditTrickle: number;
+}
+
+interface TraitLawMod {
+  factions: Partial<Record<FactionId, number>>;
+  sign: "pos" | "neg" | "both";
+  onlyOptions?: string[];
+}
+
+const TRAIT_LAW_MODS: Record<TraitId, TraitLawMod[]> = {
+  charismatic: [
+    {
+      factions: { loyalists: 0.5, labour: 0.5, engineers: 0.5 },
+      sign: "both",
+    },
+  ],
+  hawk: [
+    { factions: { labour: 1.5 }, sign: "both" },
+    { factions: { loyalists: 0.5 }, sign: "both" },
+  ],
+  ambitious: [
+    {
+      factions: { labour: 2 },
+      sign: "pos",
+      onlyOptions: [
+        "earth_relations_defiant",
+        "earth_relations_hostile",
+        "immigration_open",
+      ],
+    },
+    {
+      factions: { loyalists: 2 },
+      sign: "neg",
+      onlyOptions: [
+        "earth_relations_defiant",
+        "earth_relations_hostile",
+        "immigration_open",
+      ],
+    },
+  ],
+  bureaucrat: [
+    {
+      factions: { loyalists: 1.5 },
+      sign: "pos",
+      onlyOptions: ["liberties_restricted", "earth_relations_submissive", "taxation_heavy"],
+    },
+  ],
+  visionary: [{ factions: { engineers: 1.5 }, sign: "both" }],
+  frugal: [
+    {
+      factions: { labour: 0.75 },
+      sign: "neg",
+      onlyOptions: ["taxation_heavy", "taxation_punitive"],
+    },
+  ],
+  engineer: [{ factions: { engineers: 1.5 }, sign: "pos" }],
+  pragmatic: [{ factions: { labour: 0.7, engineers: 0.7 }, sign: "both" }],
+  cautious: [
+    { factions: { loyalists: 0.8, labour: 0.8, engineers: 0.8 }, sign: "both" },
+  ],
+};
+
+export function applyTraitLawMods(
+  traits: TraitId[],
+  optionId: string,
+  reaction: Partial<Record<FactionId, number>>
+): Partial<Record<FactionId, number>> {
+  const out: Partial<Record<FactionId, number>> = { ...reaction };
+  for (const trait of traits) {
+    const mods = TRAIT_LAW_MODS[trait];
+    if (!mods) continue;
+    for (const mod of mods) {
+      if (mod.onlyOptions && !mod.onlyOptions.includes(optionId)) continue;
+      for (const f of FACTION_IDS) {
+        const delta = out[f] ?? 0;
+        if (delta === 0) continue;
+        if (mod.sign === "pos" && delta < 0) continue;
+        if (mod.sign === "neg" && delta > 0) continue;
+        const mult = mod.factions[f];
+        if (mult !== undefined) out[f] = delta * mult;
+      }
+    }
+  }
+  return out;
 }
 
 export function governorEffects(traits: TraitId[]): GovernorEffects {

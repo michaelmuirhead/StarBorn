@@ -10,6 +10,7 @@ import EventLog from "./EventLog";
 import TradeOffer from "./TradeOffer";
 import GovernorCard from "./GovernorCard";
 import FactionsPanel from "./FactionsPanel";
+import LawsPanel from "./LawsPanel";
 import { hydrateFromStorage, isStormSeason, solInYear, useGame } from "@/game/store";
 import { ATMOSPHERE_VICTORY, SOL_MS, YEAR_SOLS } from "@/game/constants";
 
@@ -65,6 +66,7 @@ export default function GameView() {
           <MarsMap />
           <FlavorBar />
           <TradeOffer />
+          <LawsPanel />
         </div>
         <div className="flex flex-col gap-3 min-h-0">
           <FactionsPanel />
