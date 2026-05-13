@@ -19,16 +19,16 @@ export default function TopBar() {
   const date = dateLabel(state);
 
   return (
-    <header className="panel flex flex-wrap items-center gap-3 px-4 py-2.5 mx-3 mt-3">
+    <header className="panel flex flex-wrap items-center gap-3 px-3 py-1.5 mx-3 mt-3 shrink-0">
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-mars-300 via-mars-500 to-mars-800 shadow-inner shadow-black/40" />
-        <div>
-          <div className="font-display tracking-wider text-sm text-mars-100">
+        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-mars-300 via-mars-500 to-mars-800 shadow-inner shadow-black/40" />
+        <div className="flex items-baseline gap-2">
+          <span className="font-display tracking-[0.2em] text-sm text-mars-100">
             STARBORN
-          </div>
-          <div className="text-[10px] uppercase tracking-[0.2em] text-space-200">
-            Mars Colony · {date} · Sol {sol}
-          </div>
+          </span>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-space-200">
+            {date} · Sol {sol}
+          </span>
         </div>
       </div>
 

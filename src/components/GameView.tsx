@@ -11,7 +11,6 @@ import ChoicePrompt from "./ChoicePrompt";
 import RightTabs from "./RightTabs";
 import Onboarding from "./Onboarding";
 import {
-  dateLabel,
   hydrateFromStorage,
   isStormSeason,
   snapshotProduction,
@@ -94,7 +93,6 @@ function FlavorBar() {
   const soldierCapacity = snapshotProduction(state).soldierCapacity;
   const stormy = isStormSeason(sol);
   const yearSol = solInYear(sol);
-  const date = dateLabel(state);
   const milTone =
     soldiers > soldierCapacity && soldiers > 0
       ? "text-rose-300"
@@ -102,13 +100,7 @@ function FlavorBar() {
         ? "text-mars-100"
         : "text-space-200";
   return (
-    <div className="panel px-3 py-1.5 text-[11px] flex flex-wrap gap-x-4 gap-y-1 text-space-200 shrink-0">
-      <span>
-        Date <span className="text-mars-100 font-mono">{date}</span>
-      </span>
-      <span>
-        Sol <span className="text-mars-100 font-mono">{sol}</span>
-      </span>
+    <div className="panel px-3 py-1 text-[11px] flex flex-wrap gap-x-3 gap-y-1 text-space-200 shrink-0">
       <span>
         Year-sol <span className="text-mars-100 font-mono">{yearSol}/{YEAR_SOLS}</span>
       </span>
