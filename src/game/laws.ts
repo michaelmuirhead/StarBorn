@@ -197,6 +197,31 @@ export const LAWS: Record<LawCategoryId, LawCategoryDef> = {
       },
     ],
   },
+  calendar: {
+    id: "calendar",
+    name: "Calendar",
+    description: "How the colony marks the years.",
+    options: [
+      {
+        id: "calendar_terrestrial",
+        name: "Terrestrial (AD)",
+        description:
+          "Years measured against Earth's Common Era. The familiar dating system.",
+        effects: {},
+        factionReaction: {},
+        isDefault: true,
+      },
+      {
+        id: "calendar_martian",
+        name: "Martian Independence (M.I.)",
+        description:
+          "Years measured from the Declaration. A daily reminder that Mars stands alone. M.I. 1 begins the sol the Republic was proclaimed.",
+        effects: {},
+        factionReaction: {},
+        requiresIndependence: true,
+      },
+    ],
+  },
   research_priority: {
     id: "research_priority",
     name: "Research Priority",
@@ -242,6 +267,7 @@ export const LAW_CATEGORY_ORDER: LawCategoryId[] = [
   "earth_relations",
   "immigration",
   "research_priority",
+  "calendar",
 ];
 
 export function defaultLaws(): ActiveLaws {

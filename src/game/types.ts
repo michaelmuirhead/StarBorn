@@ -188,7 +188,8 @@ export type LawCategoryId =
   | "liberties"
   | "earth_relations"
   | "immigration"
-  | "research_priority";
+  | "research_priority"
+  | "calendar";
 
 export interface LawEffects {
   creditsPerPop?: number;
@@ -210,6 +211,7 @@ export interface LawOptionDef {
   factionReaction: Partial<Record<FactionId, number>>;
   requiresResearch?: ResearchId;
   requiresGovernment?: GovernmentType[];
+  requiresIndependence?: boolean;
   isDefault?: boolean;
 }
 
@@ -292,6 +294,7 @@ export interface GameState {
   pendingChoice: PendingChoice | null;
   firedChoiceEvents: Record<string, number>;
   independence: boolean;
+  independenceSol: number | null;
   log: LogEntry[];
   selectedTile: number | null;
 }

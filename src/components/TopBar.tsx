@@ -1,6 +1,6 @@
 "use client";
 
-import { useGame } from "@/game/store";
+import { dateLabel, useGame } from "@/game/store";
 
 const SPEEDS: { label: string; value: 0 | 1 | 2 | 4 }[] = [
   { label: "Pause", value: 0 },
@@ -15,6 +15,8 @@ export default function TopBar() {
   const setSpeed = useGame((s) => s.setSpeed);
   const reset = useGame((s) => s.reset);
   const saveNow = useGame((s) => s.saveNow);
+  const state = useGame();
+  const date = dateLabel(state);
 
   return (
     <header className="panel flex flex-wrap items-center gap-3 px-4 py-2.5 mx-3 mt-3">
@@ -25,7 +27,7 @@ export default function TopBar() {
             STARBORN
           </div>
           <div className="text-[10px] uppercase tracking-[0.2em] text-space-200">
-            Mars Colony · Sol {sol}
+            Mars Colony · {date} · Sol {sol}
           </div>
         </div>
       </div>

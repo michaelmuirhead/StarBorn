@@ -1,4 +1,4 @@
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 export const SAVE_KEY = "starborn.save.v1";
 
 export const MAP_RADIUS = 4;
@@ -61,3 +61,5 @@ export const OFFER_COOLDOWN_MAX = 18;
 export const OFFER_DURATION_SOLS = 5;
 
 export const ATMOSPHERE_VICTORY = 100;
+
+export const STARTING_AD_YEAR = 2100;
