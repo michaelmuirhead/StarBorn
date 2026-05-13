@@ -7,12 +7,25 @@ new gameplay per unit of effort. Numbers in brackets are rough effort tiers
 ## Phase 1 — Mars MVP (shipped)
 
 - [x] Hex map of Mars with terrain bonuses (ice, ore, ridge)
-- [x] Buildings: habitat, solar, water, greenhouse, oxygen, mine, lab, foundry, spaceport
+- [x] Buildings: habitat, solar, water, greenhouse, oxygen, mine, lab, foundry,
+      spaceport, storage tank, atmospheric processor
 - [x] Tick-based sim (sol), pause / 1x / 2x / 4x
 - [x] Population, housing, morale, food/water/oxygen consumption
-- [x] Research tree (8 nodes), random events (dust storm, outbreak, etc.)
+- [x] Research tree (9 nodes), random events (dust storm, outbreak, etc.)
 - [x] localStorage save / load, "new game"
 - [x] Vercel-ready deploy
+- [x] Storage caps + Storage Tank silos
+- [x] Construction time (buildings come online over several sols)
+- [x] Adjacency bonuses (solar/lab clusters, greenhouse + water extractor pair,
+      habitat clustering for morale)
+- [x] Building upgrades (Lvl 1 → 2 → 3 using alloys & minerals)
+- [x] Building maintenance (lab/foundry/spaceport/processor light upkeep)
+- [x] Predictive depletion warnings ("food runs out in N sols")
+- [x] Live tile inspector with per-building output, modifiers, neighbours
+- [x] NPC trade ship offers (accept / decline / expire)
+- [x] Seasonal Martian storm cycles (clustered dust storms)
+- [x] Terraforming endgame: Atmospheric Processor + atmosphere stat +
+      victory condition
 
 ## Phase 2 — Make the colony feel alive [M]
 

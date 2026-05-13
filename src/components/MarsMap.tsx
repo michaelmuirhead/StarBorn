@@ -3,11 +3,19 @@
 import { useMemo } from "react";
 import { useGame } from "@/game/store";
 import { BUILDINGS } from "@/game/buildings";
-import { HEX_HEIGHT, HEX_SIZE, HEX_WIDTH, TERRAIN_INFO, hexCorners, hexToPixel } from "@/game/map";
+import {
+  HEX_HEIGHT,
+  HEX_SIZE,
+  HEX_WIDTH,
+  TERRAIN_INFO,
+  hexCorners,
+  hexToPixel,
+} from "@/game/map";
 
 export default function MarsMap() {
   const tiles = useGame((s) => s.tiles);
   const buildings = useGame((s) => s.buildings);
+  const sol = useGame((s) => s.sol);
   const selectedTile = useGame((s) => s.selectedTile);
   const buildSelection = useGame((s) => s.buildSelection);
   const selectTile = useGame((s) => s.selectTile);
@@ -63,6 +71,18 @@ export default function MarsMap() {
           const placed = buildingsByTile.get(t.index);
           const occupied = !!placed;
           const canBuildHere = !!buildSelection && !occupied;
+          const underConstruction = placed && sol < placed.constructionDoneSol;
+          const def = placed ? BUILDINGS[placed.building] : null;
+          const progress =
+            placed && def
+              ? Math.min(
+                  1,
+                  Math.max(
+                    0,
+                    (sol - placed.builtSol) / Math.max(1, def.constructionSols)
+                  )
+                )
+              : 0;
           return (
             <g
               key={t.index}
@@ -93,7 +113,7 @@ export default function MarsMap() {
                   strokeWidth={1}
                 />
               )}
-              {placed ? (
+              {placed && def ? (
                 <g>
                   <circle cx={x} cy={y} r={HEX_SIZE * 0.55} fill="#0a0d18" fillOpacity={0.7} />
                   <text
@@ -101,10 +121,43 @@ export default function MarsMap() {
                     y={y + 6}
                     textAnchor="middle"
                     className="fill-mars-100"
+                    fillOpacity={underConstruction ? 0.45 : 1}
                     style={{ font: "600 18px ui-sans-serif" }}
                   >
-                    {BUILDINGS[placed.building].icon}
+                    {def.icon}
                   </text>
+                  {underConstruction ? (
+                    <g>
+                      <rect
+                        x={x - HEX_SIZE * 0.45}
+                        y={y + HEX_SIZE * 0.35}
+                        width={HEX_SIZE * 0.9}
+                        height={3}
+                        rx={1.5}
+                        fill="#1e2742"
+                      />
+                      <rect
+                        x={x - HEX_SIZE * 0.45}
+                        y={y + HEX_SIZE * 0.35}
+                        width={HEX_SIZE * 0.9 * progress}
+                        height={3}
+                        rx={1.5}
+                        fill="#ff9056"
+                      />
+                    </g>
+                  ) : (
+                    placed.level > 1 && (
+                      <text
+                        x={x + HEX_SIZE * 0.25}
+                        y={y - HEX_SIZE * 0.3}
+                        textAnchor="middle"
+                        className="fill-mars-100"
+                        style={{ font: "700 10px ui-sans-serif" }}
+                      >
+                        {placed.level}
+                      </text>
+                    )
+                  )}
                 </g>
               ) : (
                 t.terrain !== "plain" && (
