@@ -287,7 +287,7 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     constructionSols: 10,
     maintenance: { alloys: 0.5, minerals: 2 },
     upgrades: standardUpgrades(1500, 60),
-    atmospherePerSol: 0.04,
+    atmospherePerSol: 0.08,
     requiresResearch: "atmospherics",
   },
 };

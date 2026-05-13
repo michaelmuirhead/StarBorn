@@ -9,7 +9,7 @@ export const STARTING_RESOURCES = {
   food: 400,
   water: 400,
   oxygen: 400,
-  power: 30,
+  power: 60,
   minerals: 200,
   alloys: 0,
   rare_earths: 0,
@@ -23,14 +23,14 @@ export const BASE_STORAGE_CAPS = {
   oxygen: 500,
   power: 50,
   minerals: 400,
-  alloys: 200,
+  alloys: 300,
   rare_earths: 200,
   research: Infinity,
 } as const;
 
 export const STARTING_STRATA = {
-  workers: 8,
-  specialists: 4,
+  workers: 11,
+  specialists: 1,
   soldiers: 0,
 } as const;
 

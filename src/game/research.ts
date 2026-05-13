@@ -150,12 +150,12 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
     id: "deep_drilling",
     name: "Deep Drilling",
     description:
-      "Deep-seam techniques and rare-earth extraction. Mines yield more minerals, a small credit trickle from off-world sales, and a small flow of Rare Earths.",
+      "Deep-seam techniques and rare-earth extraction. Mines yield more minerals, a small credit trickle from off-world sales, and a flow of Rare Earths.",
     cost: 60,
     requires: ["robotics"],
     effects: [
       "Mines +50% minerals and +1 credit",
-      "Mines produce +0.3 Rare Earths per sol",
+      "Mines produce +0.5 Rare Earths per sol",
     ],
   },
   megastructures: {
