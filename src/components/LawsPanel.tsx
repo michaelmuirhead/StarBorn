@@ -34,21 +34,21 @@ export default function LawsPanel() {
   const effects = aggregateLawEffects(state);
 
   return (
-    <section className="panel p-3 flex flex-col gap-2">
-      <h2 className="text-sm uppercase tracking-widest text-mars-200">Laws</h2>
-      <div className="text-[11px] text-space-200 -mt-1">
+    <section className="panel p-3 flex flex-col gap-2 flex-1 min-h-0 overflow-hidden">
+      <h2 className="text-sm uppercase tracking-widest text-mars-200 shrink-0">Laws</h2>
+      <div className="text-[11px] text-space-200 -mt-1 shrink-0">
         Pick policies. Each category has a {LAW_COOLDOWN_SOLS}-sol cooldown after a change.
         Your Governor&apos;s traits shape how factions react.
       </div>
-      <div className="text-[10px] uppercase tracking-widest text-space-200 pt-1">
+      <div className="text-[10px] uppercase tracking-widest text-space-200 pt-1 shrink-0">
         Current per-sol law totals
       </div>
-      <div className="grid grid-cols-3 gap-1 text-[11px] font-mono">
+      <div className="grid grid-cols-3 gap-1 text-[11px] font-mono shrink-0">
         <FactionDeltaPill id="loyalists" value={effects.factionDelta.loyalists} />
         <FactionDeltaPill id="labour" value={effects.factionDelta.labour} />
         <FactionDeltaPill id="engineers" value={effects.factionDelta.engineers} />
       </div>
-      <div className="flex flex-col gap-1.5 scrollarea overflow-y-auto max-h-[44vh] pr-1">
+      <div className="flex flex-col gap-1.5 scrollarea overflow-y-auto flex-1 min-h-0 pr-1">
         {LAW_CATEGORY_ORDER.map((catId) => {
           const cat = LAWS[catId];
           const currentId = laws.options[catId];

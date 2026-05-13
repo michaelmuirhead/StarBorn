@@ -295,6 +295,8 @@ export interface GameState {
   firedChoiceEvents: Record<string, number>;
   independence: boolean;
   independenceSol: number | null;
+  cityName: string;
+  onboarded: boolean;
   log: LogEntry[];
   selectedTile: number | null;
 }

@@ -5,27 +5,24 @@ import { BUILDINGS } from "@/game/buildings";
 
 interface CityMarker {
   id: string;
-  name: string;
   x: number;
   y: number;
-  established: boolean;
 }
 
-const CITIES: CityMarker[] = [
-  { id: "aresward", name: "Aresward", x: 10, y: -20, established: true },
-];
+const CITY_POSITIONS: CityMarker[] = [{ id: "primary", x: 10, y: -20 }];
 
 export default function MarsMap() {
   const buildings = useGame((s) => s.buildings);
   const sol = useGame((s) => s.sol);
   const selectedTile = useGame((s) => s.selectedTile);
   const selectTile = useGame((s) => s.selectTile);
+  const cityName = useGame((s) => s.cityName);
 
   const operationalCount = buildings.filter((b) => sol >= b.constructionDoneSol).length;
   const constructingCount = buildings.length - operationalCount;
 
   return (
-    <div className="panel relative flex-1 min-h-[420px] flex flex-col overflow-hidden">
+    <div className="panel relative flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="px-3 pt-2 flex items-center justify-between text-[11px] uppercase tracking-widest text-space-200">
         <span>Mars</span>
         <span>Olympus Sector</span>
@@ -59,7 +56,7 @@ export default function MarsMap() {
           <ellipse cx="55" cy="40" rx="14" ry="6" fill="#7a2a0d" opacity="0.35" />
           <ellipse cx="-55" cy="10" rx="9" ry="4" fill="#7a2a0d" opacity="0.35" />
           <circle cx="0" cy="0" r="100" fill="url(#marsTerminator)" />
-          {CITIES.map((city) => (
+          {CITY_POSITIONS.map((city) => (
             <g key={city.id} className="cursor-pointer" onClick={() => selectTile(null)}>
               <circle cx={city.x} cy={city.y} r="14" fill="url(#cityGlow)" />
               <circle cx={city.x} cy={city.y} r="3.5" fill="#fff1d6" />
@@ -83,7 +80,7 @@ export default function MarsMap() {
                 fill="#ffd9bd"
                 style={{ font: "500 11px ui-sans-serif" }}
               >
-                {city.name}
+                {cityName || "Aresward"}
               </text>
             </g>
           ))}
@@ -92,7 +89,7 @@ export default function MarsMap() {
       <div className="px-3 pb-3 pt-1 flex flex-col gap-1.5">
         <div className="flex items-baseline justify-between">
           <span className="text-[11px] uppercase tracking-widest text-mars-200">
-            Aresward Colony
+            {cityName || "Aresward"} Colony
           </span>
           <span className="text-[10px] font-mono text-space-200">
             {operationalCount} operational

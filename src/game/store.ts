@@ -64,6 +64,7 @@ interface Actions {
   declineOffer: () => void;
   changeLaw: (category: LawCategoryId, optionId: string) => void;
   applyChoice: (choiceId: string) => void;
+  finishOnboarding: (cityName: string) => void;
 }
 
 export type GameStore = GameState & Actions;
@@ -89,7 +90,7 @@ function freshState(): GameState {
   return {
     version: SAVE_VERSION,
     sol: 1,
-    speed: 1,
+    speed: 0,
     resources: { ...STARTING_RESOURCES },
     storageCaps: { ...BASE_STORAGE_CAPS },
     strata: { ...STARTING_STRATA },
@@ -112,13 +113,9 @@ function freshState(): GameState {
     firedChoiceEvents: {},
     independence: false,
     independenceSol: null,
-    log: [
-      {
-        sol: 1,
-        kind: "info",
-        message: `Colony ship Aresward touches down. Director ${governor.name} steps onto Mars with 12 colonists. Build solar, water, food, oxygen — quickly.`,
-      },
-    ],
+    cityName: "",
+    onboarded: false,
+    log: [],
     selectedTile: null,
   };
 }
@@ -1200,6 +1197,26 @@ export const useGame = create<GameStore>((set, get) => ({
     };
     set(after);
     schedulePersist(after);
+  },
+
+  finishOnboarding: (cityName) => {
+    const state = get();
+    const trimmed = cityName.trim() || "Aresward";
+    const next: GameState = {
+      ...state,
+      cityName: trimmed,
+      onboarded: true,
+      speed: 1,
+      log: [
+        {
+          sol: 1,
+          kind: "info",
+          message: `Colony ship touches down at ${trimmed}. Director ${state.governor.name} steps onto Mars with 12 colonists. Build solar, water, food, oxygen — quickly.`,
+        },
+      ],
+    };
+    set(next);
+    schedulePersist(next);
   },
 
   applyChoice: (choiceId) => {
