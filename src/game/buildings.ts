@@ -1,5 +1,20 @@
 import type { BuildingDef, BuildingId } from "./types";
 
+// Upgrade tiers reused across most buildings. Two levels above base, each
+// multiplies output by 1.5 and upkeep by 1.25.
+const standardUpgrades = (creditsBase: number, alloysBase: number) => [
+  {
+    cost: { credits: creditsBase, alloys: alloysBase, minerals: alloysBase * 2 },
+    outputMult: 1.5,
+    upkeepMult: 1.25,
+  },
+  {
+    cost: { credits: creditsBase * 2, alloys: alloysBase * 2, minerals: alloysBase * 4 },
+    outputMult: 2.25,
+    upkeepMult: 1.6,
+  },
+];
+
 export const BUILDINGS: Record<BuildingId, BuildingDef> = {
   habitat: {
     id: "habitat",
@@ -11,16 +26,24 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     output: {},
     housing: 6,
     workers: 0,
+    constructionSols: 3,
+    storage: { food: 30, water: 30, oxygen: 30 },
+    upgrades: standardUpgrades(120, 8),
+    adjacency: { moralePerSameNeighbor: 1 },
   },
   solar: {
     id: "solar",
     name: "Solar Array",
     icon: "☀",
-    description: "Photovoltaic array. Vulnerable to dust storms.",
+    description:
+      "Photovoltaic array. Vulnerable to dust storms. Arrays next to arrays share inverters.",
     cost: { credits: 100, minerals: 30 },
     upkeep: {},
     output: { power: 5 },
     workers: 0,
+    constructionSols: 2,
+    upgrades: standardUpgrades(100, 6),
+    adjacency: { sameType: { resource: "power", perNeighbor: 0.5, max: 2 } },
     terrainBonus: { ridge: { power: 2 } },
   },
   water_extractor: {
@@ -32,17 +55,25 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     upkeep: { power: 2 },
     output: { water: 3 },
     workers: 1,
+    constructionSols: 3,
+    upgrades: standardUpgrades(140, 10),
     terrainBonus: { ice: { water: 3 } },
   },
   greenhouse: {
     id: "greenhouse",
     name: "Greenhouse",
     icon: "⚘",
-    description: "Hydroponic farm producing food.",
+    description:
+      "Hydroponic farm producing food. Gains a small bonus when adjacent to a Water Extractor.",
     cost: { credits: 140, minerals: 40 },
     upkeep: { power: 1, water: 1 },
     output: { food: 3 },
     workers: 1,
+    constructionSols: 3,
+    upgrades: standardUpgrades(150, 10),
+    adjacency: {
+      pair: { other: "water_extractor", resource: "food", perNeighbor: 0.5, max: 1.5 },
+    },
   },
   oxygen_gen: {
     id: "oxygen_gen",
@@ -53,27 +84,37 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     upkeep: { power: 2 },
     output: { oxygen: 3 },
     workers: 1,
+    constructionSols: 3,
+    upgrades: standardUpgrades(140, 10),
   },
   mine: {
     id: "mine",
     name: "Mine",
     icon: "⛏",
-    description: "Extracts useful minerals from the regolith.",
+    description:
+      "Extracts minerals from the regolith. Surplus ore is sold off-world for a small credit trickle.",
     cost: { credits: 160, minerals: 20 },
     upkeep: { power: 2 },
-    output: { minerals: 2 },
+    output: { minerals: 2, credits: 1 },
     workers: 2,
+    constructionSols: 3,
+    upgrades: standardUpgrades(160, 12),
     terrainBonus: { ore: { minerals: 2 } },
   },
   lab: {
     id: "lab",
     name: "Research Lab",
     icon: "⚗",
-    description: "Generates research points to unlock new technology.",
+    description:
+      "Generates research points. Labs adjacent to other labs share findings: +10% per neighbour.",
     cost: { credits: 200, minerals: 60 },
     upkeep: { power: 1 },
     output: { research: 1 },
     workers: 2,
+    constructionSols: 4,
+    maintenance: { minerals: 0.2 },
+    upgrades: standardUpgrades(200, 15),
+    adjacency: { sameType: { resource: "research", perNeighbor: 0.1, max: 0.3 } },
   },
   foundry: {
     id: "foundry",
@@ -84,6 +125,9 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     upkeep: { power: 3, minerals: 3 },
     output: { alloys: 1 },
     workers: 2,
+    constructionSols: 5,
+    maintenance: { minerals: 0.5 },
+    upgrades: standardUpgrades(250, 20),
     requiresResearch: "alloy_metallurgy",
   },
   spaceport: {
@@ -91,12 +135,45 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     name: "Spaceport",
     icon: "✈",
     description:
-      "Launch pad and orbital docks. Enables expansion beyond Mars in future updates.",
+      "Launch pad and orbital docks. Generates credits via interplanetary trade. Enables future off-world expansion.",
     cost: { credits: 600, minerals: 200, alloys: 20 },
     upkeep: { power: 4 },
     output: { credits: 5 },
     workers: 3,
+    constructionSols: 8,
+    maintenance: { alloys: 0.25, minerals: 1 },
+    upgrades: standardUpgrades(500, 30),
     requiresResearch: "spaceflight",
+  },
+  storage_tank: {
+    id: "storage_tank",
+    name: "Storage Tank",
+    icon: "▥",
+    description:
+      "Pressurised tanks and silos. Increases your maximum storage for life-support resources and ore.",
+    cost: { credits: 80, minerals: 30 },
+    upkeep: {},
+    output: {},
+    workers: 0,
+    constructionSols: 2,
+    storage: { food: 250, water: 250, oxygen: 250, minerals: 300, alloys: 80 },
+    upgrades: standardUpgrades(80, 6),
+  },
+  atmospheric_processor: {
+    id: "atmospheric_processor",
+    name: "Atmospheric Processor",
+    icon: "❄",
+    description:
+      "Terraforming megastructure. Slowly thickens Mars' atmosphere. At full terraform, colonists no longer need bottled oxygen.",
+    cost: { credits: 2000, minerals: 500, alloys: 100 },
+    upkeep: { power: 8, water: 4 },
+    output: {},
+    workers: 3,
+    constructionSols: 10,
+    maintenance: { alloys: 0.5, minerals: 2 },
+    upgrades: standardUpgrades(1500, 60),
+    atmospherePerSol: 0.04,
+    requiresResearch: "atmospherics",
   },
 };
 
@@ -107,7 +184,9 @@ export const BUILDING_ORDER: BuildingId[] = [
   "greenhouse",
   "oxygen_gen",
   "mine",
+  "storage_tank",
   "lab",
   "foundry",
   "spaceport",
+  "atmospheric_processor",
 ];

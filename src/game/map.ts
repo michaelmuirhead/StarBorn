@@ -47,6 +47,26 @@ export function generateTiles(seed = 42): Tile[] {
   return tiles;
 }
 
+export const HEX_DIRECTIONS: Array<{ q: number; r: number }> = [
+  { q: 1, r: 0 },
+  { q: -1, r: 0 },
+  { q: 0, r: 1 },
+  { q: 0, r: -1 },
+  { q: 1, r: -1 },
+  { q: -1, r: 1 },
+];
+
+export function tileNeighbors(tiles: Tile[], tile: Tile): Tile[] {
+  const out: Tile[] = [];
+  for (const d of HEX_DIRECTIONS) {
+    const nq = tile.q + d.q;
+    const nr = tile.r + d.r;
+    const found = tiles.find((t) => t.q === nq && t.r === nr);
+    if (found) out.push(found);
+  }
+  return out;
+}
+
 export const TERRAIN_INFO: Record<TerrainId, { name: string; color: string; hint: string }> = {
   plain: { name: "Regolith Plain", color: "#a3370f", hint: "" },
   ice: { name: "Subsurface Ice", color: "#7fb8d6", hint: "Water Extractor: +3 water" },

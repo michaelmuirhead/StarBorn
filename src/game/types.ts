@@ -19,9 +19,25 @@ export type BuildingId =
   | "mine"
   | "lab"
   | "foundry"
-  | "spaceport";
+  | "spaceport"
+  | "storage_tank"
+  | "atmospheric_processor";
 
 export type TerrainId = "plain" | "ice" | "ore" | "ridge";
+
+export interface AdjacencyBonus {
+  // Bonus per neighboring building of the same type.
+  sameType?: { resource: keyof Resources; perNeighbor: number; max?: number };
+  // Pairing bonus: matching neighbors of a specific other building.
+  pair?: {
+    other: BuildingId;
+    resource: keyof Resources;
+    perNeighbor: number;
+    max?: number;
+  };
+  // Flat morale contribution per neighbor of the same type (per sol, capped).
+  moralePerSameNeighbor?: number;
+}
 
 export interface BuildingDef {
   id: BuildingId;
@@ -35,6 +51,16 @@ export interface BuildingDef {
   workers: number;
   requiresResearch?: ResearchId;
   terrainBonus?: Partial<Record<TerrainId, Partial<Resources>>>;
+  constructionSols: number;
+  // Storage cap contribution while standing.
+  storage?: Partial<Resources>;
+  // Upgrade tiers (levels 2..N). Each entry is what it costs to reach that level.
+  upgrades?: Array<{ cost: Partial<Resources>; outputMult: number; upkeepMult: number }>;
+  // Building maintenance: light passive drain that scales with level. Counted in upkeep.
+  maintenance?: Partial<Resources>;
+  adjacency?: AdjacencyBonus;
+  // Special hook for terraforming: atmosphere contribution per sol per level.
+  atmospherePerSol?: number;
 }
 
 export interface PlacedBuilding {
@@ -43,6 +69,8 @@ export interface PlacedBuilding {
   tile: number;
   workers: number;
   builtSol: number;
+  constructionDoneSol: number;
+  level: number;
 }
 
 export type ResearchId =
@@ -53,7 +81,8 @@ export type ResearchId =
   | "spaceflight"
   | "robotics"
   | "xeno_biology"
-  | "civic_council";
+  | "civic_council"
+  | "atmospherics";
 
 export interface ResearchDef {
   id: ResearchId;
@@ -85,6 +114,15 @@ export interface ActiveEvent {
   };
 }
 
+export interface TradeOffer {
+  id: string;
+  flavor: string;
+  cost: Partial<Resources>;
+  reward: Partial<Resources>;
+  offeredSol: number;
+  expiresSol: number;
+}
+
 export interface LogEntry {
   sol: number;
   kind: "info" | "warn" | "good" | "bad";
@@ -105,9 +143,12 @@ export interface GameState {
   sol: number;
   speed: Speed;
   resources: Resources;
+  storageCaps: Resources;
   population: number;
   morale: number;
   housing: number;
+  atmosphere: number;
+  victory: boolean;
   tiles: Tile[];
   buildings: PlacedBuilding[];
   research: {
@@ -116,7 +157,8 @@ export interface GameState {
     progress: number;
   };
   events: ActiveEvent[];
+  pendingOffer: TradeOffer | null;
+  nextOfferSol: number;
   log: LogEntry[];
   selectedTile: number | null;
-  buildSelection: BuildingId | null;
 }

@@ -58,6 +58,15 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
     cost: 35,
     effects: ["Morale recovers faster", "Prepares ground for civic systems"],
   },
+  atmospherics: {
+    id: "atmospherics",
+    name: "Atmospherics",
+    description:
+      "Unlocks the Atmospheric Processor and the long-arc goal of terraforming Mars.",
+    cost: 120,
+    requires: ["xeno_biology", "alloy_metallurgy"],
+    effects: ["Unlock Atmospheric Processor", "Enables terraforming victory"],
+  },
 };
 
 export const RESEARCH_ORDER: ResearchId[] = [
@@ -69,4 +78,5 @@ export const RESEARCH_ORDER: ResearchId[] = [
   "robotics",
   "xeno_biology",
   "spaceflight",
+  "atmospherics",
 ];
