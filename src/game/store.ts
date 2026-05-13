@@ -18,6 +18,7 @@ import {
   POP_GROWTH_PER_SOL,
   SAVE_KEY,
   SAVE_VERSION,
+  STARTING_AD_YEAR,
   STARTING_HOUSING,
   STARTING_MORALE,
   STARTING_STRATA,
@@ -110,6 +111,7 @@ function freshState(): GameState {
     pendingChoice: null,
     firedChoiceEvents: {},
     independence: false,
+    independenceSol: null,
     log: [
       {
         sol: 1,
@@ -208,6 +210,23 @@ export function solInYear(sol: number): number {
 export function isStormSeason(sol: number): boolean {
   const s = solInYear(sol);
   return s >= STORM_SEASON_START && s <= STORM_SEASON_END;
+}
+
+export function earthYear(sol: number): number {
+  return STARTING_AD_YEAR + Math.floor((sol - 1) / YEAR_SOLS);
+}
+
+export function martianYear(sol: number, independenceSol: number | null): number {
+  if (independenceSol === null) return 0;
+  return Math.floor((sol - independenceSol) / YEAR_SOLS) + 1;
+}
+
+export function dateLabel(state: GameState): string {
+  const calendar = state.laws.options.calendar;
+  if (calendar === "calendar_martian" && state.independenceSol !== null) {
+    return `M.I. ${martianYear(state.sol, state.independenceSol)}`;
+  }
+  return `AD ${earthYear(state.sol)}`;
 }
 
 function isOperational(b: PlacedBuilding, sol: number): boolean {
@@ -578,6 +597,9 @@ export function isLawOptionAvailable(
     !option.requiresGovernment.includes(state.government)
   ) {
     return { ok: false, reason: "Requires government reform." };
+  }
+  if (option.requiresIndependence && !state.independence) {
+    return { ok: false, reason: "Requires Mars to be independent." };
   }
   return { ok: true };
 }
@@ -1214,7 +1236,9 @@ export const useGame = create<GameStore>((set, get) => ({
     factions = normaliseInfluence(factions);
 
     const government = e.setGovernment ?? state.government;
+    const becameIndependent = e.setIndependence && !state.independence;
     const independence = e.setIndependence ? true : state.independence;
+    const independenceSol = becameIndependent ? state.sol : state.independenceSol;
 
     const next: GameState = {
       ...state,
@@ -1224,6 +1248,7 @@ export const useGame = create<GameStore>((set, get) => ({
       factions,
       government,
       independence,
+      independenceSol,
       pendingChoice: null,
       firedChoiceEvents: { ...state.firedChoiceEvents, [def.id]: state.sol },
       log: pushLog(state.log, {
