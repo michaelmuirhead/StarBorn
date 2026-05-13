@@ -1,0 +1,122 @@
+export type ResourceKey =
+  | "credits"
+  | "food"
+  | "water"
+  | "oxygen"
+  | "power"
+  | "minerals"
+  | "alloys"
+  | "research";
+
+export type Resources = Record<ResourceKey, number>;
+
+export type BuildingId =
+  | "habitat"
+  | "solar"
+  | "water_extractor"
+  | "greenhouse"
+  | "oxygen_gen"
+  | "mine"
+  | "lab"
+  | "foundry"
+  | "spaceport";
+
+export type TerrainId = "plain" | "ice" | "ore" | "ridge";
+
+export interface BuildingDef {
+  id: BuildingId;
+  name: string;
+  icon: string;
+  description: string;
+  cost: Partial<Resources>;
+  upkeep: Partial<Resources>;
+  output: Partial<Resources>;
+  housing?: number;
+  workers: number;
+  requiresResearch?: ResearchId;
+  terrainBonus?: Partial<Record<TerrainId, Partial<Resources>>>;
+}
+
+export interface PlacedBuilding {
+  id: string;
+  building: BuildingId;
+  tile: number;
+  workers: number;
+  builtSol: number;
+}
+
+export type ResearchId =
+  | "hydroponics"
+  | "solar_ii"
+  | "advanced_habitats"
+  | "alloy_metallurgy"
+  | "spaceflight"
+  | "robotics"
+  | "xeno_biology"
+  | "civic_council";
+
+export interface ResearchDef {
+  id: ResearchId;
+  name: string;
+  description: string;
+  cost: number;
+  requires?: ResearchId[];
+  effects: string[];
+}
+
+export interface EventEffect {
+  resources?: Partial<Resources>;
+  population?: number;
+  morale?: number;
+  message: string;
+}
+
+export interface ActiveEvent {
+  id: string;
+  defId: string;
+  name: string;
+  description: string;
+  startedSol: number;
+  durationSols: number;
+  modifiers?: {
+    solarMultiplier?: number;
+    foodMultiplier?: number;
+    researchMultiplier?: number;
+  };
+}
+
+export interface LogEntry {
+  sol: number;
+  kind: "info" | "warn" | "good" | "bad";
+  message: string;
+}
+
+export interface Tile {
+  index: number;
+  q: number;
+  r: number;
+  terrain: TerrainId;
+}
+
+export type Speed = 0 | 1 | 2 | 4;
+
+export interface GameState {
+  version: number;
+  sol: number;
+  speed: Speed;
+  resources: Resources;
+  population: number;
+  morale: number;
+  housing: number;
+  tiles: Tile[];
+  buildings: PlacedBuilding[];
+  research: {
+    completed: ResearchId[];
+    current: ResearchId | null;
+    progress: number;
+  };
+  events: ActiveEvent[];
+  log: LogEntry[];
+  selectedTile: number | null;
+  buildSelection: BuildingId | null;
+}
