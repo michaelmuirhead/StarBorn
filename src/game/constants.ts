@@ -1,4 +1,4 @@
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 export const SAVE_KEY = "starborn.save.v1";
 
 export const MAP_RADIUS = 4;

@@ -21,7 +21,8 @@ export type BuildingId =
   | "foundry"
   | "spaceport"
   | "storage_tank"
-  | "atmospheric_processor";
+  | "atmospheric_processor"
+  | "barracks";
 
 export type TerrainId = "plain" | "ice" | "ore" | "ridge";
 
@@ -62,6 +63,7 @@ export interface BuildingDef {
   maintenance?: Partial<Resources>;
   adjacency?: AdjacencyBonus;
   atmospherePerSol?: number;
+  soldierCapacity?: number;
 }
 
 export interface PlacedBuilding {
@@ -223,6 +225,30 @@ export interface ActiveLaws {
   cooldownUntilSol: Partial<Record<LawCategoryId, number>>;
 }
 
+export interface ChoiceEffect {
+  resources?: Partial<Resources>;
+  morale?: number;
+  loyalty?: number;
+  factionHappiness?: Partial<Record<FactionId, number>>;
+  factionInfluence?: Partial<Record<FactionId, number>>;
+  setGovernment?: GovernmentType;
+  setIndependence?: boolean;
+  logKind?: LogEntry["kind"];
+  logMessage?: string;
+}
+
+export interface ChoiceEventChoice {
+  id: string;
+  label: string;
+  description: string;
+  effect: ChoiceEffect;
+}
+
+export interface PendingChoice {
+  defId: string;
+  offeredSol: number;
+}
+
 export interface FactionDef {
   id: FactionId;
   name: string;
@@ -263,6 +289,9 @@ export interface GameState {
   loyalty: number;
   factions: FactionState[];
   laws: ActiveLaws;
+  pendingChoice: PendingChoice | null;
+  firedChoiceEvents: Record<string, number>;
+  independence: boolean;
   log: LogEntry[];
   selectedTile: number | null;
 }
