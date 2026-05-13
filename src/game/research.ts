@@ -67,6 +67,51 @@ export const RESEARCH: Record<ResearchId, ResearchDef> = {
     requires: ["xeno_biology", "alloy_metallurgy"],
     effects: ["Unlock Atmospheric Processor", "Enables terraforming victory"],
   },
+  standing_army: {
+    id: "standing_army",
+    name: "Standing Army",
+    description:
+      "Doctrine and command structures for a permanent military. Unlocks conscription policies.",
+    cost: 50,
+    requires: ["civic_council"],
+    effects: [
+      "Unlock Selective Service and Conscription law options",
+      "Total Mobilisation available once government reforms",
+    ],
+  },
+  security_apparatus: {
+    id: "security_apparatus",
+    name: "Security Apparatus",
+    description:
+      "Surveillance, security forces, and emergency protocols. Unlocks restrictive civil liberties policies.",
+    cost: 40,
+    requires: ["civic_council"],
+    effects: [
+      "Unlock Restricted Liberties",
+      "Martial Law available once government reforms",
+    ],
+  },
+  free_press: {
+    id: "free_press",
+    name: "Free Press",
+    description:
+      "Independent media, public assembly rights, and judicial independence. Unlocks the Free Society policy.",
+    cost: 35,
+    requires: ["civic_council"],
+    effects: ["Unlock Free Society civil liberties"],
+  },
+  independence_movement: {
+    id: "independence_movement",
+    name: "Independence Movement",
+    description:
+      "Theoretical and organisational groundwork for breaking with Earth. Unlocks confrontational Earth policies.",
+    cost: 100,
+    requires: ["civic_council"],
+    effects: [
+      "Unlock Defiant Earth Relations",
+      "Hostile Earth Relations available once government reforms",
+    ],
+  },
 };
 
 export const RESEARCH_ORDER: ResearchId[] = [
@@ -74,9 +119,13 @@ export const RESEARCH_ORDER: ResearchId[] = [
   "solar_ii",
   "advanced_habitats",
   "civic_council",
+  "free_press",
+  "security_apparatus",
+  "standing_army",
   "alloy_metallurgy",
   "robotics",
   "xeno_biology",
   "spaceflight",
+  "independence_movement",
   "atmospherics",
 ];

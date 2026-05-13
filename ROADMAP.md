@@ -50,10 +50,14 @@ which all scale identically from 12 colonists to billions.
 - [ ] **Factions** — Earth Loyalists, Labour Coalition, Engineering
       Guild, plus more as the colony grows. Each has influence %,
       happiness, and standing demands.
-- [ ] **Laws / policies** — taxation rate, conscription, civil
-      liberties, immigration. Each swings faction influence and
-      resource flows. This is where the temporary mine-credit trickle
-      gets replaced.
+- [x] **Laws / policies** — six categories (Taxation, Conscription,
+      Civil Liberties, Earth Relations, Immigration, Research Priority).
+      Each option shifts production/research/maintenance/loyalty drift,
+      collects taxes per pop, conscripts workers into soldiers, and
+      swings faction happiness. Spicy options gated by research
+      (Standing Army, Security Apparatus, Free Press, Independence
+      Movement) and government type. Governor traits modify how
+      factions react. 10-sol cooldown per category.
 - [ ] **Loyalty to Earth** — top-level stat, drifts with policy.
       Thresholds trigger Earth sanctions, then the option to declare
       independence, then a (Phase 3+) war.

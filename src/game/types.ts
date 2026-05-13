@@ -83,7 +83,11 @@ export type ResearchId =
   | "robotics"
   | "xeno_biology"
   | "civic_council"
-  | "atmospherics";
+  | "atmospherics"
+  | "standing_army"
+  | "security_apparatus"
+  | "free_press"
+  | "independence_movement";
 
 export interface ResearchDef {
   id: ResearchId;
@@ -176,6 +180,49 @@ export interface GovernmentDef {
 
 export type FactionId = "loyalists" | "labour" | "engineers";
 
+export type LawCategoryId =
+  | "taxation"
+  | "conscription"
+  | "liberties"
+  | "earth_relations"
+  | "immigration"
+  | "research_priority";
+
+export interface LawEffects {
+  creditsPerPop?: number;
+  conscriptionRate?: number;
+  moraleDelta?: number;
+  populationGrowthMult?: number;
+  researchMult?: number;
+  productionMult?: number;
+  maintenanceMult?: number;
+  loyaltyDrift?: number;
+  earthSupplyMult?: number;
+}
+
+export interface LawOptionDef {
+  id: string;
+  name: string;
+  description: string;
+  effects: LawEffects;
+  factionReaction: Partial<Record<FactionId, number>>;
+  requiresResearch?: ResearchId;
+  requiresGovernment?: GovernmentType[];
+  isDefault?: boolean;
+}
+
+export interface LawCategoryDef {
+  id: LawCategoryId;
+  name: string;
+  description: string;
+  options: LawOptionDef[];
+}
+
+export interface ActiveLaws {
+  options: Record<LawCategoryId, string>;
+  cooldownUntilSol: Partial<Record<LawCategoryId, number>>;
+}
+
 export interface FactionDef {
   id: FactionId;
   name: string;
@@ -215,6 +262,7 @@ export interface GameState {
   government: GovernmentType;
   loyalty: number;
   factions: FactionState[];
+  laws: ActiveLaws;
   log: LogEntry[];
   selectedTile: number | null;
 }
