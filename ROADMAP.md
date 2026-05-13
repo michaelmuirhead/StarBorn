@@ -27,15 +27,44 @@ new gameplay per unit of effort. Numbers in brackets are rough effort tiers
 - [x] Terraforming endgame: Atmospheric Processor + atmosphere stat +
       victory condition
 
-## Phase 2 — Make the colony feel alive [M]
+## Phase 2 — Government, factions, and named leadership [M]
 
-- [ ] Win/loss conditions (e.g. "100 colonists" or "colony collapse")
-- [ ] More events with branching choices (Reigns-style decisions)
-- [ ] Named colonists with traits, jobs, lifespans
-- [ ] Morale → riots, productivity, defection
-- [ ] Civic systems (Council, laws, factions inside the colony)
-- [ ] Tutorial / onboarding overlay
-- [ ] Sound + music (subtle, optional)
+Phase 2 prepares the long arc to a 300-million-citizen planetary power.
+**Population is modelled as aggregate strata, not individuals.** Only
+leadership roles (governor, ministers, generals, admirals) carry names.
+Personality and stakes come from factions, laws, and branching events,
+which all scale identically from 12 colonists to billions.
+
+- [ ] **Population strata** — replace the single colonist count with
+      Workers / Specialists / Soldiers / Leaders. Buildings demand a
+      specific stratum to staff. Strata grow at different rates.
+- [ ] **Auto-scaling population units** — UI promotes the label from
+      "colonists" → "thousands" → "millions" as totals cross thresholds.
+      Underlying math is one continuous number.
+- [ ] **Named Governor** — a Head of State with 1–2 traits (Engineer,
+      Charismatic, Hawk, Pragmatic, Visionary, Frugal, Ambitious,
+      Cautious…). Replaceable via events (death, retirement, recall).
+- [ ] **Government type** — Corporate Colony → Provisional Council →
+      Martian Republic → … . Each unlocks different policies and
+      victory conditions.
+- [ ] **Factions** — Earth Loyalists, Labour Coalition, Engineering
+      Guild, plus more as the colony grows. Each has influence %,
+      happiness, and standing demands.
+- [ ] **Laws / policies** — taxation rate, conscription, civil
+      liberties, immigration. Each swings faction influence and
+      resource flows. This is where the temporary mine-credit trickle
+      gets replaced.
+- [ ] **Loyalty to Earth** — top-level stat, drifts with policy.
+      Thresholds trigger Earth sanctions, then the option to declare
+      independence, then a (Phase 3+) war.
+- [ ] **Branching events** — events present 2–4 choices that swing
+      faction influence, loyalty, resources, or fire follow-up chains.
+- [ ] **New win/loss conditions** — Independence Declared (Phase 3+
+      hook), Earth Annexation (loyalty bottoms out), Civil War (faction
+      stalemate + low morale). Existing terraforming + colony collapse
+      remain.
+- [ ] **Tutorial overlay** for the first few sols.
+- [ ] **Subtle ambient audio**.
 
 ## Phase 3 — Off-world expansion [L]
 

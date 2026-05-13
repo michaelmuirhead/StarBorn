@@ -39,6 +39,10 @@ export interface AdjacencyBonus {
   moralePerSameNeighbor?: number;
 }
 
+export type Stratum = "workers" | "specialists" | "soldiers";
+
+export type Strata = Record<Stratum, number>;
+
 export interface BuildingDef {
   id: BuildingId;
   name: string;
@@ -49,17 +53,14 @@ export interface BuildingDef {
   output: Partial<Resources>;
   housing?: number;
   workers: number;
+  staffStratum?: Stratum;
   requiresResearch?: ResearchId;
   terrainBonus?: Partial<Record<TerrainId, Partial<Resources>>>;
   constructionSols: number;
-  // Storage cap contribution while standing.
   storage?: Partial<Resources>;
-  // Upgrade tiers (levels 2..N). Each entry is what it costs to reach that level.
   upgrades?: Array<{ cost: Partial<Resources>; outputMult: number; upkeepMult: number }>;
-  // Building maintenance: light passive drain that scales with level. Counted in upkeep.
   maintenance?: Partial<Resources>;
   adjacency?: AdjacencyBonus;
-  // Special hook for terraforming: atmosphere contribution per sol per level.
   atmospherePerSol?: number;
 }
 
@@ -138,13 +139,64 @@ export interface Tile {
 
 export type Speed = 0 | 1 | 2 | 4;
 
+export type TraitId =
+  | "engineer"
+  | "charismatic"
+  | "hawk"
+  | "pragmatic"
+  | "visionary"
+  | "frugal"
+  | "ambitious"
+  | "cautious"
+  | "bureaucrat";
+
+export interface TraitDef {
+  id: TraitId;
+  name: string;
+  description: string;
+}
+
+export interface Governor {
+  name: string;
+  title: string;
+  traits: TraitId[];
+  appointedSol: number;
+}
+
+export type GovernmentType =
+  | "corporate_colony"
+  | "provisional_council"
+  | "martian_republic";
+
+export interface GovernmentDef {
+  id: GovernmentType;
+  name: string;
+  description: string;
+}
+
+export type FactionId = "loyalists" | "labour" | "engineers";
+
+export interface FactionDef {
+  id: FactionId;
+  name: string;
+  shortName: string;
+  description: string;
+  color: string;
+}
+
+export interface FactionState {
+  id: FactionId;
+  influence: number;
+  happiness: number;
+}
+
 export interface GameState {
   version: number;
   sol: number;
   speed: Speed;
   resources: Resources;
   storageCaps: Resources;
-  population: number;
+  strata: Strata;
   morale: number;
   housing: number;
   atmosphere: number;
@@ -159,6 +211,10 @@ export interface GameState {
   events: ActiveEvent[];
   pendingOffer: TradeOffer | null;
   nextOfferSol: number;
+  governor: Governor;
+  government: GovernmentType;
+  loyalty: number;
+  factions: FactionState[];
   log: LogEntry[];
   selectedTile: number | null;
 }

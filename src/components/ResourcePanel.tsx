@@ -1,6 +1,6 @@
 "use client";
 
-import { depletionWarning, useGame } from "@/game/store";
+import { depletionWarning, totalPopulation, useGame } from "@/game/store";
 import type { ResourceKey } from "@/game/types";
 
 const ORDER: { key: ResourceKey; label: string; icon: string; flow?: boolean }[] = [
@@ -23,34 +23,42 @@ function fmt(n: number, flow = false) {
 export default function ResourcePanel() {
   const resources = useGame((s) => s.resources);
   const caps = useGame((s) => s.storageCaps);
-  const population = useGame((s) => s.population);
+  const strata = useGame((s) => s.strata);
   const housing = useGame((s) => s.housing);
   const morale = useGame((s) => s.morale);
+  const loyalty = useGame((s) => s.loyalty);
   const state = useGame();
   const warnings = depletionWarning(state);
+  const pop = totalPopulation(strata);
 
   return (
     <section className="panel px-3 py-2 flex flex-col gap-1.5">
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-x-3 gap-y-1.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-3 gap-y-1.5">
         <Stat
           icon="☻"
           label="Pop"
-          value={`${population}/${housing}`}
-          hint="Colonists / Housing"
+          value={`${pop}/${housing}`}
+          hint={`Workers ${Math.floor(strata.workers)} · Specialists ${Math.floor(strata.specialists)} · Soldiers ${Math.floor(strata.soldiers)}`}
         />
         <Stat
           icon="♥"
           label="Morale"
           value={`${Math.round(morale)}`}
-          hint="Colony morale (0-100)"
           tone={morale < 30 ? "bad" : morale < 60 ? "warn" : "good"}
+          hint="Colony morale (0-100)"
+        />
+        <Stat
+          icon="⚐"
+          label="Loyalty"
+          value={`${Math.round(loyalty)}`}
+          tone={loyalty < 30 ? "bad" : loyalty < 60 ? "warn" : "good"}
+          hint="Loyalty to Earth (0-100). Drives Phase 2 politics."
         />
         {ORDER.map((r) => {
           const val = resources[r.key] ?? 0;
           const cap = caps[r.key];
           const tone = r.flow ? (val < 0 ? "bad" : val === 0 ? "warn" : "good") : undefined;
-          const capLabel =
-            !r.flow && cap !== Infinity ? `/${Math.floor(cap)}` : "";
+          const capLabel = !r.flow && cap !== Infinity ? `/${Math.floor(cap)}` : "";
           const nearCap = !r.flow && cap !== Infinity && val >= cap * 0.95;
           return (
             <Stat
