@@ -58,10 +58,11 @@ export const BUILDINGS: Record<BuildingId, BuildingDef> = {
     id: "mine",
     name: "Mine",
     icon: "⛏",
-    description: "Extracts useful minerals from the regolith.",
+    description:
+      "Extracts minerals from the regolith. Surplus ore is sold off-world for a small credit trickle.",
     cost: { credits: 160, minerals: 20 },
     upkeep: { power: 2 },
-    output: { minerals: 2 },
+    output: { minerals: 2, credits: 1 },
     workers: 2,
     terrainBonus: { ore: { minerals: 2 } },
   },
