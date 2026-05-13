@@ -17,9 +17,7 @@ export default function MarsMap() {
   const buildings = useGame((s) => s.buildings);
   const sol = useGame((s) => s.sol);
   const selectedTile = useGame((s) => s.selectedTile);
-  const buildSelection = useGame((s) => s.buildSelection);
   const selectTile = useGame((s) => s.selectTile);
-  const placeBuilding = useGame((s) => s.placeBuilding);
 
   const bounds = useMemo(() => {
     let minX = Infinity,
@@ -70,7 +68,6 @@ export default function MarsMap() {
           const isSelected = selectedTile === t.index;
           const placed = buildingsByTile.get(t.index);
           const occupied = !!placed;
-          const canBuildHere = !!buildSelection && !occupied;
           const underConstruction = placed && sol < placed.constructionDoneSol;
           const def = placed ? BUILDINGS[placed.building] : null;
           const progress =
@@ -87,13 +84,7 @@ export default function MarsMap() {
             <g
               key={t.index}
               className="cursor-pointer"
-              onClick={() => {
-                if (buildSelection && !occupied) {
-                  placeBuilding(t.index, buildSelection);
-                } else {
-                  selectTile(t.index);
-                }
-              }}
+              onClick={() => selectTile(t.index)}
             >
               <polygon
                 points={hexCorners(x, y)}
@@ -102,17 +93,6 @@ export default function MarsMap() {
                 stroke={isSelected ? "#ffd9bd" : "#2e1006"}
                 strokeWidth={isSelected ? 2.5 : 1}
               />
-              {canBuildHere && (
-                <polygon
-                  points={hexCorners(x, y)}
-                  fill="#ffd9bd"
-                  fillOpacity={0.08}
-                  stroke="#ffd9bd"
-                  strokeOpacity={0.5}
-                  strokeDasharray="3 3"
-                  strokeWidth={1}
-                />
-              )}
               {placed && def ? (
                 <g>
                   <circle cx={x} cy={y} r={HEX_SIZE * 0.55} fill="#0a0d18" fillOpacity={0.7} />

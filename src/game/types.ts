@@ -161,5 +161,4 @@ export interface GameState {
   nextOfferSol: number;
   log: LogEntry[];
   selectedTile: number | null;
-  buildSelection: BuildingId | null;
 }

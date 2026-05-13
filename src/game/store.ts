@@ -37,8 +37,7 @@ import type {
 
 interface Actions {
   selectTile: (idx: number | null) => void;
-  selectBuild: (id: BuildingId | null) => void;
-  placeBuilding: (tile: number, id: BuildingId) => void;
+  build: (id: BuildingId) => void;
   upgradeBuilding: (tile: number) => void;
   demolishBuilding: (tile: number) => void;
   setSpeed: (s: 0 | 1 | 2 | 4) => void;
@@ -93,8 +92,45 @@ function freshState(): GameState {
       },
     ],
     selectedTile: null,
-    buildSelection: null,
   };
+}
+
+export function autoPickTile(state: GameState, buildingId: BuildingId): number | null {
+  const def = BUILDINGS[buildingId];
+  const occupied = new Set(state.buildings.map((b) => b.tile));
+  const candidates = state.tiles.filter((t) => !occupied.has(t.index));
+  if (candidates.length === 0) return null;
+
+  const byTile = new Map(state.buildings.map((b) => [b.tile, b]));
+
+  const scored = candidates.map((t) => {
+    let score = 0;
+    const terrainBonus = def.terrainBonus?.[t.terrain];
+    if (terrainBonus) {
+      for (const k in terrainBonus) {
+        const key = k as keyof Resources;
+        score += (terrainBonus[key] ?? 0) * 10;
+      }
+    }
+    const neighbors = tileNeighbors(state.tiles, t);
+    for (const n of neighbors) {
+      const nb = byTile.get(n.index);
+      if (!nb) continue;
+      if (def.adjacency?.sameType && nb.building === buildingId) {
+        score += def.adjacency.sameType.perNeighbor * 5;
+      }
+      if (def.adjacency?.pair && nb.building === def.adjacency.pair.other) {
+        score += def.adjacency.pair.perNeighbor * 5;
+      }
+      if (def.adjacency?.moralePerSameNeighbor && nb.building === buildingId) {
+        score += def.adjacency.moralePerSameNeighbor * 2;
+      }
+    }
+    return { tile: t, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score || a.tile.index - b.tile.index);
+  return scored[0].tile.index;
 }
 
 function canAfford(res: Resources, cost: Partial<Resources>): boolean {
@@ -645,11 +681,7 @@ function schedulePersist(state: GameState) {
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     try {
-      const snapshot: GameState = {
-        ...state,
-        selectedTile: null,
-        buildSelection: null,
-      };
+      const snapshot: GameState = { ...state, selectedTile: null };
       localStorage.setItem(SAVE_KEY, JSON.stringify(snapshot));
     } catch {
       // ignore quota errors
@@ -664,7 +696,7 @@ function loadInitial(): GameState {
     if (!raw) return freshState();
     const parsed = JSON.parse(raw) as GameState;
     if (parsed.version !== SAVE_VERSION) return freshState();
-    return { ...freshState(), ...parsed, selectedTile: null, buildSelection: null };
+    return { ...freshState(), ...parsed, selectedTile: null };
   } catch {
     return freshState();
   }
@@ -674,14 +706,23 @@ export const useGame = create<GameStore>((set, get) => ({
   ...freshState(),
 
   selectTile: (idx) => set({ selectedTile: idx }),
-  selectBuild: (id) => set({ buildSelection: id }),
 
-  placeBuilding: (tile, id) => {
+  build: (id) => {
     const state = get();
-    if (state.buildings.some((b) => b.tile === tile)) return;
     const def = BUILDINGS[id];
     if (def.requiresResearch && !state.research.completed.includes(def.requiresResearch)) return;
     if (!canAfford(state.resources, def.cost)) return;
+    const tile = autoPickTile(state, id);
+    if (tile === null) {
+      set({
+        log: pushLog(state.log, {
+          sol: state.sol,
+          kind: "warn",
+          message: "No empty tiles left. Demolish something first.",
+        }),
+      });
+      return;
+    }
     const placed: PlacedBuilding = {
       id: `b-${state.sol}-${tile}-${Math.floor(Math.random() * 9999)}`,
       building: id,
@@ -700,7 +741,6 @@ export const useGame = create<GameStore>((set, get) => ({
         kind: "info",
         message: `Construction started: ${def.name} (${def.constructionSols} sols).`,
       }),
-      buildSelection: null,
       selectedTile: tile,
     };
     set(next);
@@ -800,7 +840,7 @@ export const useGame = create<GameStore>((set, get) => ({
     try {
       localStorage.setItem(
         SAVE_KEY,
-        JSON.stringify({ ...state, selectedTile: null, buildSelection: null })
+        JSON.stringify({ ...state, selectedTile: null })
       );
     } catch {
       // ignore
@@ -811,7 +851,7 @@ export const useGame = create<GameStore>((set, get) => ({
     try {
       const parsed = JSON.parse(json) as GameState;
       if (parsed.version !== SAVE_VERSION) return false;
-      set({ ...freshState(), ...parsed, selectedTile: null, buildSelection: null });
+      set({ ...freshState(), ...parsed, selectedTile: null });
       return true;
     } catch {
       return false;
@@ -820,11 +860,7 @@ export const useGame = create<GameStore>((set, get) => ({
 
   exportJson: () => {
     const state = get();
-    return JSON.stringify(
-      { ...state, selectedTile: null, buildSelection: null },
-      null,
-      2
-    );
+    return JSON.stringify({ ...state, selectedTile: null }, null, 2);
   },
 
   acceptOffer: () => {
