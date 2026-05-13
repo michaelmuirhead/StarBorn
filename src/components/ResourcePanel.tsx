@@ -39,28 +39,28 @@ export default function ResourcePanel() {
   const pop = totalPopulation(strata);
 
   return (
-    <section className="panel px-3 py-2 flex flex-col gap-1.5">
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-x-3 gap-y-1.5">
-        <Stat
+    <section className="panel px-3 py-1.5 flex flex-col gap-1 shrink-0">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <Pill
           icon="☻"
           label="Pop"
           value={`${pop}/${housing}`}
           hint={`Workers ${Math.floor(strata.workers)} · Specialists ${Math.floor(strata.specialists)} · Soldiers ${Math.floor(strata.soldiers)}`}
         />
-        <Stat
+        <Pill
           icon="♥"
           label="Morale"
           value={`${Math.round(morale)}`}
           tone={morale < 30 ? "bad" : morale < 60 ? "warn" : "good"}
-          hint="Colony morale (0-100)"
         />
-        <Stat
+        <Pill
           icon="⚐"
           label="Loyalty"
           value={`${Math.round(loyalty)}`}
           tone={loyalty < 30 ? "bad" : loyalty < 60 ? "warn" : "good"}
-          hint="Loyalty to Earth (0-100). Drives Phase 2 politics."
+          hint="Loyalty to Earth (0-100)"
         />
+        <span className="text-space-400">·</span>
         {ORDER.map((r) => {
           const val = resources[r.key] ?? 0;
           const cap = caps[r.key];
@@ -69,7 +69,7 @@ export default function ResourcePanel() {
           const nearCap = !r.flow && cap !== Infinity && val >= cap * 0.95;
           const flow = flows[r.key];
           return (
-            <Stat
+            <Pill
               key={r.key}
               icon={r.icon}
               label={r.label}
@@ -82,7 +82,7 @@ export default function ResourcePanel() {
         })}
       </div>
       {warnings.length > 0 && (
-        <div className="flex flex-wrap gap-1 pt-1 text-[11px]">
+        <div className="flex flex-wrap gap-1 text-[11px]">
           {warnings.map((w) => {
             const tone =
               w.solsLeft <= 3
@@ -104,7 +104,7 @@ export default function ResourcePanel() {
   );
 }
 
-function Stat({
+function Pill({
   icon,
   label,
   value,
@@ -131,24 +131,21 @@ function Stat({
     flow === undefined
       ? ""
       : flow > 0.05
-        ? "text-emerald-300/90"
+        ? "text-emerald-300/80"
         : flow < -0.05
-          ? "text-rose-300/90"
+          ? "text-rose-300/80"
           : "text-space-200";
   return (
-    <div className="flex items-center gap-2" title={hint}>
-      <span className="text-mars-200 w-4 text-center">{icon}</span>
-      <div className="leading-tight">
-        <div className={`text-sm font-mono ${toneClass}`}>{value}</div>
-        <div className="text-[10px] uppercase tracking-wider text-space-200 flex gap-1 items-baseline">
-          <span>{label}</span>
-          {flow !== undefined && (
-            <span className={`font-mono normal-case tracking-normal ${flowTone}`}>
-              {fmtDelta(flow)}/sol
-            </span>
-          )}
-        </div>
-      </div>
+    <div
+      className="flex items-center gap-1.5 text-[12px] whitespace-nowrap"
+      title={hint ?? label}
+    >
+      <span className="text-mars-200 w-3 text-center">{icon}</span>
+      <span className="text-[10px] uppercase tracking-wider text-space-200">{label}</span>
+      <span className={`font-mono ${toneClass}`}>{value}</span>
+      {flow !== undefined && (
+        <span className={`font-mono text-[10px] ${flowTone}`}>{fmtDelta(flow)}</span>
+      )}
     </div>
   );
 }
