@@ -13,6 +13,7 @@ const SHORT: Record<keyof Resources, string> = {
   power: "⚡",
   minerals: "ore",
   alloys: "alloys",
+  rare_earths: "REE",
   research: "rp",
 };
 

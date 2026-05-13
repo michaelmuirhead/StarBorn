@@ -13,6 +13,7 @@ const RESOURCE_LABEL: Record<ResourceKey, string> = {
   power: "⚡",
   minerals: "ore",
   alloys: "alloys",
+  rare_earths: "REE",
   research: "rp",
 };
 

@@ -77,6 +77,7 @@ const EMPTY_RESOURCES: Resources = {
   power: 0,
   minerals: 0,
   alloys: 0,
+  rare_earths: 0,
   research: 0,
 };
 
@@ -338,6 +339,8 @@ export function buildingLiveStats(
   const prod: Partial<Resources> = {};
   const upkeep: Partial<Resources> = {};
 
+  const cyberMult = completed.has("cybernetics") ? 1.15 : 1;
+
   if (isOperational(placed, state.sol)) {
     for (const k in def.output) {
       const key = k as keyof Resources;
@@ -351,7 +354,14 @@ export function buildingLiveStats(
       if ((def.id === "mine" || def.id === "foundry") && completed.has("robotics")) {
         amount *= 1.25;
       }
-      if (def.id === "lab" && key === "research") amount *= researchEventMult;
+      if (def.id === "mine" && key === "minerals" && completed.has("deep_drilling")) {
+        amount *= 1.5;
+      }
+      if (def.id === "lab" && key === "research") {
+        amount *= researchEventMult;
+        if (completed.has("computing")) amount *= 1.25;
+        if (completed.has("quantum_computing")) amount *= 1.5;
+      }
 
       if (def.adjacency?.sameType?.resource === key) {
         const a = def.adjacency.sameType;
@@ -363,13 +373,19 @@ export function buildingLiveStats(
         const bonus = Math.min(a.max ?? Infinity, pairNeighbors * a.perNeighbor);
         amount += bonus;
       }
-      amount *= outputMult * gov.productionMult * laws.productionMult;
+      amount *= outputMult * gov.productionMult * laws.productionMult * cyberMult;
       if (key === "research") amount *= gov.researchMult * laws.researchMult;
       prod[key] = (prod[key] ?? 0) + amount;
     }
 
     if (def.id === "habitat" && gov.habitatCreditTrickle > 0) {
       prod.credits = (prod.credits ?? 0) + gov.habitatCreditTrickle;
+    }
+
+    if (def.id === "mine" && completed.has("deep_drilling")) {
+      const bonusMult = outputMult * gov.productionMult * laws.productionMult * cyberMult;
+      prod.credits = (prod.credits ?? 0) + 1 * bonusMult;
+      prod.rare_earths = (prod.rare_earths ?? 0) + 0.3 * bonusMult;
     }
 
     for (const k in def.upkeep) {
@@ -451,7 +467,11 @@ function computeProduction(state: GameState): Production {
     }
     if (isOperational(b, state.sol) && def.soldierCapacity) {
       const { outputMult } = levelMultipliers(b);
-      soldierCapacity += def.soldierCapacity * outputMult;
+      let capacity = def.soldierCapacity * outputMult;
+      if (b.building === "barracks" && state.research.completed.includes("infantry_doctrine")) {
+        capacity += b.level;
+      }
+      soldierCapacity += capacity;
     }
     if (!isOperational(b, state.sol)) continue;
     if (def.workers > 0 && b.workers < def.workers) continue;
@@ -648,6 +668,7 @@ function runTick(state: GameState): GameState {
   let loyalty = state.loyalty;
   let factions = state.factions.map((f) => ({ ...f }));
 
+  const hasMedical = state.research.completed.includes("medical_doctrine");
   for (const ev of events) {
     if (ev.startedSol !== sol) continue;
     const def = EVENT_DEFS.find((d) => d.id === ev.defId);
@@ -663,10 +684,16 @@ function runTick(state: GameState): GameState {
       if (imm.population > 0) {
         strata = { ...strata, workers: strata.workers + imm.population };
       } else {
-        strata = decayStrata(strata, -imm.population);
+        let loss = -imm.population;
+        if (hasMedical) loss = Math.max(1, Math.ceil(loss / 2));
+        strata = decayStrata(strata, loss);
       }
     }
-    if (imm.morale) morale = Math.max(0, Math.min(100, morale + imm.morale));
+    if (imm.morale) {
+      let d = imm.morale;
+      if (hasMedical && d < 0) d = Math.ceil(d / 2);
+      morale = Math.max(0, Math.min(100, morale + d));
+    }
   }
 
   // Conscription: convert workers into soldiers at the law's rate, leaving at
@@ -694,12 +721,26 @@ function runTick(state: GameState): GameState {
   const production = computeProduction({ ...state, sol, events, buildings, strata });
   const { prod, upkeep, housing, storageCaps, atmosphereGain, soldierCapacity } = production;
 
-  // Power balance — if consumption exceeds production, scale most outputs down.
+  // Power balance — power is a stockpile (capped by storage). Surplus banks
+  // up; deficits drain the stockpile, and only if the stockpile is empty does
+  // production scale down.
   const powerProd = prod.power;
   const powerUse = upkeep.power;
+  const powerBalance = powerProd - powerUse;
+  const powerCap = storageCaps.power;
   let powerScale = 1;
-  if (powerUse > powerProd && powerUse > 0) {
-    powerScale = Math.max(0, powerProd / powerUse);
+  let powerAfter = resources.power;
+  if (powerBalance >= 0) {
+    powerAfter = Math.min(powerCap, resources.power + powerBalance);
+  } else {
+    const deficit = -powerBalance;
+    if (resources.power >= deficit) {
+      powerAfter = resources.power - deficit;
+    } else {
+      const available = powerProd + resources.power;
+      powerScale = powerUse > 0 ? Math.max(0, available / powerUse) : 1;
+      powerAfter = 0;
+    }
   }
 
   const completed = new Set(state.research.completed);
@@ -715,9 +756,11 @@ function runTick(state: GameState): GameState {
   resources.oxygen += prod.oxygen * powerScale - oxygenNeed;
   resources.minerals += prod.minerals * powerScale - upkeep.minerals;
   resources.alloys += prod.alloys * powerScale - (upkeep.alloys ?? 0);
+  resources.rare_earths +=
+    (prod.rare_earths ?? 0) * powerScale - (upkeep.rare_earths ?? 0);
   resources.research += prod.research * powerScale;
   resources.credits += prod.credits + laws.creditsPerPop * totalPopulation(strata);
-  resources.power = powerProd - powerUse;
+  resources.power = powerAfter;
 
   let moraleAdj = 0;
   for (const b of state.buildings) {
@@ -730,6 +773,13 @@ function runTick(state: GameState): GameState {
   }
   moraleAdj = Math.min(5, moraleAdj);
   moraleAdj += gov.moraleBonus;
+
+  if (hasMedical) {
+    const habitatCount = state.buildings.filter(
+      (b) => b.building === "habitat" && isOperational(b, sol)
+    ).length;
+    moraleAdj += habitatCount * 0.5;
+  }
 
   // Clamp resources to storage caps (lose overflow with a quiet log entry).
   const clamped = clampToCaps(resources, storageCaps);
@@ -757,10 +807,14 @@ function runTick(state: GameState): GameState {
   }
   if (resources.minerals < 0) resources.minerals = 0;
   if (resources.alloys < 0) resources.alloys = 0;
+  if (resources.rare_earths < 0) resources.rare_earths = 0;
 
+  const hasLongevity = completed.has("longevity");
+  const decayMult = hasLongevity ? 0.75 : 1;
+  const growthMult = hasLongevity ? 1.25 : 1;
   let popAfter = population;
   if (shortages.length > 0) {
-    const loss = Math.max(1, Math.floor(population * POP_DECAY_PER_SOL));
+    const loss = Math.max(1, Math.floor(population * POP_DECAY_PER_SOL * decayMult));
     strata = decayStrata(strata, loss);
     popAfter = totalPopulation(strata);
     morale = Math.max(0, morale - 5);
@@ -770,7 +824,7 @@ function runTick(state: GameState): GameState {
       message: `Shortage of ${shortages.join(", ")}. Lost ${loss} colonist${loss === 1 ? "" : "s"}.`,
     });
   } else if (population < housing && morale > 40) {
-    const growth = population * POP_GROWTH_PER_SOL * laws.populationGrowthMult;
+    const growth = population * POP_GROWTH_PER_SOL * growthMult * laws.populationGrowthMult;
     if (Math.random() < growth) {
       strata = { ...strata, workers: strata.workers + 1 };
       popAfter = totalPopulation(strata);
@@ -1010,7 +1064,8 @@ export const useGame = create<GameStore>((set, get) => ({
       return;
     }
     const gov = governorEffects(state.governor.traits);
-    const buildSols = Math.max(1, def.constructionSols - gov.constructionSpeedup);
+    const modular = state.research.completed.includes("modular_construction") ? 1 : 0;
+    const buildSols = Math.max(1, def.constructionSols - gov.constructionSpeedup - modular);
     const placed: PlacedBuilding = {
       id: `b-${state.sol}-${tile}-${Math.floor(Math.random() * 9999)}`,
       building: id,
@@ -1350,6 +1405,7 @@ export function resourceFlows(state: GameState): Partial<Record<keyof Resources,
     oxygen: prod.oxygen - population * PER_COLONIST.oxygen * atmosScale,
     minerals: prod.minerals - (upkeep.minerals ?? 0),
     alloys: prod.alloys - (upkeep.alloys ?? 0),
+    rare_earths: (prod.rare_earths ?? 0) - (upkeep.rare_earths ?? 0),
     research: prod.research,
     power: prod.power - upkeep.power,
   };
