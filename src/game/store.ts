@@ -1294,6 +1294,25 @@ export function snapshotProduction(state: GameState) {
   return computeProduction(state);
 }
 
+export function resourceFlows(state: GameState): Partial<Record<keyof Resources, number>> {
+  const { prod, upkeep } = computeProduction(state);
+  const laws = aggregateLawEffects(state);
+  const completed = new Set(state.research.completed);
+  const xeno = completed.has("xeno_biology") ? 0.8 : 1;
+  const atmosScale = 1 - state.atmosphere / ATMOSPHERE_VICTORY;
+  const population = totalPopulation(state.strata);
+  return {
+    credits: prod.credits + laws.creditsPerPop * population,
+    food: prod.food - population * PER_COLONIST.food * xeno,
+    water: prod.water - population * PER_COLONIST.water * xeno - (upkeep.water ?? 0),
+    oxygen: prod.oxygen - population * PER_COLONIST.oxygen * atmosScale,
+    minerals: prod.minerals - (upkeep.minerals ?? 0),
+    alloys: prod.alloys - (upkeep.alloys ?? 0),
+    research: prod.research,
+    power: prod.power - upkeep.power,
+  };
+}
+
 export function depletionWarning(
   state: GameState
 ): Array<{ key: keyof Resources; solsLeft: number }> {

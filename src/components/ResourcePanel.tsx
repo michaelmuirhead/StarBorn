@@ -1,6 +1,6 @@
 "use client";
 
-import { depletionWarning, totalPopulation, useGame } from "@/game/store";
+import { depletionWarning, resourceFlows, totalPopulation, useGame } from "@/game/store";
 import type { ResourceKey } from "@/game/types";
 
 const ORDER: { key: ResourceKey; label: string; icon: string; flow?: boolean }[] = [
@@ -20,6 +20,12 @@ function fmt(n: number, flow = false) {
   return `${Math.floor(rounded)}`;
 }
 
+function fmtDelta(n: number) {
+  const rounded = Math.round(n * 10) / 10;
+  if (rounded === 0) return "±0";
+  return rounded > 0 ? `+${rounded}` : `${rounded}`;
+}
+
 export default function ResourcePanel() {
   const resources = useGame((s) => s.resources);
   const caps = useGame((s) => s.storageCaps);
@@ -29,6 +35,7 @@ export default function ResourcePanel() {
   const loyalty = useGame((s) => s.loyalty);
   const state = useGame();
   const warnings = depletionWarning(state);
+  const flows = resourceFlows(state);
   const pop = totalPopulation(strata);
 
   return (
@@ -60,6 +67,7 @@ export default function ResourcePanel() {
           const tone = r.flow ? (val < 0 ? "bad" : val === 0 ? "warn" : "good") : undefined;
           const capLabel = !r.flow && cap !== Infinity ? `/${Math.floor(cap)}` : "";
           const nearCap = !r.flow && cap !== Infinity && val >= cap * 0.95;
+          const flow = flows[r.key];
           return (
             <Stat
               key={r.key}
@@ -68,6 +76,7 @@ export default function ResourcePanel() {
               value={`${fmt(val, r.flow)}${capLabel}`}
               tone={nearCap ? "warn" : tone}
               hint={nearCap ? "Near storage cap — surplus will spoil" : undefined}
+              flow={r.flow ? undefined : flow}
             />
           );
         })}
@@ -101,12 +110,14 @@ function Stat({
   value,
   hint,
   tone,
+  flow,
 }: {
   icon: string;
   label: string;
   value: string;
   hint?: string;
   tone?: "good" | "warn" | "bad";
+  flow?: number;
 }) {
   const toneClass =
     tone === "bad"
@@ -116,12 +127,27 @@ function Stat({
         : tone === "good"
           ? "text-emerald-300"
           : "text-space-50";
+  const flowTone =
+    flow === undefined
+      ? ""
+      : flow > 0.05
+        ? "text-emerald-300/90"
+        : flow < -0.05
+          ? "text-rose-300/90"
+          : "text-space-200";
   return (
     <div className="flex items-center gap-2" title={hint}>
       <span className="text-mars-200 w-4 text-center">{icon}</span>
       <div className="leading-tight">
         <div className={`text-sm font-mono ${toneClass}`}>{value}</div>
-        <div className="text-[10px] uppercase tracking-wider text-space-200">{label}</div>
+        <div className="text-[10px] uppercase tracking-wider text-space-200 flex gap-1 items-baseline">
+          <span>{label}</span>
+          {flow !== undefined && (
+            <span className={`font-mono normal-case tracking-normal ${flowTone}`}>
+              {fmtDelta(flow)}/sol
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
